@@ -1,32 +1,4 @@
 #include "websocket.h"
-#include "json_handler.h"
-#include "symbol_manager.h"
-
-/* LOG UTILS */
-static FILE *log_file = NULL;
-
-static void log_emit(int level, const char *msg)
-{
-	if (log_file) {
-		fprintf(log_file, "%s", msg);
-		fflush(log_file);
-	} else {
-		fprintf(stderr, "%s", msg);
-	}
-}
-
-int init_logging()
-{
-	log_file = fopen("./log/log_file.txt", "w");
-	if (!log_file) {
-		pr_err("Failed to open log_file");
-		return -1;
-	}
-	lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE, log_emit);
-	return 0;
-}
-/* LOG UTILS */
-
 
 /* Websocket callback function */
 static int callback_upbit(struct lws *wsi,
@@ -42,12 +14,12 @@ static int callback_upbit(struct lws *wsi,
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
             // response from UPbit
-			parse_json((char *)in);
+			parse_websocket_data((char *)in, len);
             break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE: {
             // request to UPbit
-            request_msg(wsi);
+			ticker_orderbook_trade_request(wsi);
             break;
         }
 
@@ -115,23 +87,100 @@ void cleanup_websocket(struct lws_context *context)
 {
 	if (context) {
 		lws_context_destroy(context);
+		clean_extern_json();
 	}
 }
 
-void request_msg(struct lws *wsi)
+void ticker_request(struct lws *wsi)
 {
-	char *msg = create_subscription();
-	size_t len = strlen(msg);
-	unsigned char *tmp = (unsigned char *)malloc(LWS_PRE + len);
-	if (!tmp) {
-		pr_err("malloc failed.");
-		return;
+	size_t len = strlen(ticker_json);
+	if (len > 1024) {
+		unsigned char *buf;
+		MALLOC(buf, sizeof(unsigned char) * (LWS_PRE + len + 1));
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, ticker_json, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+		}
+		free(buf);
+	} else {
+		unsigned char buf[LWS_PRE + 1024];
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, ticker_json, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+		}
 	}
-	unsigned char *start = tmp + LWS_PRE;
-	memcpy(start, msg, len);
-	if (lws_write(wsi, start, len, LWS_WRITE_TEXT) < 0) {
-		lwsl_err("lws_write() failed.\n");
+}
+
+void orderbook_request(struct lws *wsi)
+{
+	size_t len = strlen(orderbook_json);
+	if (len > 1024) {
+		unsigned char *buf;
+		MALLOC(buf, sizeof(unsigned char) * (LWS_PRE + len + 1));
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, orderbook_json, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+			free(buf);
+		}
+	} else {
+		unsigned char buf[LWS_PRE + 1024];
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, orderbook_json, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+		}
 	}
-	free(msg);
-	free(tmp);
+}
+
+void ticker_orderbook_request(struct lws *wsi)
+{
+	size_t len = strlen(ticker_orderbook_json);
+	if (len > 1024) {
+		unsigned char *buf;
+		MALLOC(buf, sizeof(unsigned char) * (LWS_PRE + len + 1));
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, ticker_orderbook_json, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+		}
+	} else {
+		unsigned char buf[LWS_PRE + 1024];
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, ticker_orderbook_json, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+		}
+	}
+}
+
+void ticker_orderbook_trade_request(struct lws *wsi)
+{
+	size_t len = strlen(ticker_orderbook_trade);
+	if (len > 1024) {
+		unsigned char *buf;
+		MALLOC(buf, sizeof(unsigned char) * (LWS_PRE + len + 1));
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, ticker_orderbook_trade, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+		}
+	} else {
+		unsigned char buf[LWS_PRE + 1024];
+		unsigned char *msg = &buf[LWS_PRE];
+		memcpy(msg, ticker_orderbook_trade, len);
+		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
+			lwsl_err("lws_write() failed.\n");
+			pr_err("lws_write() failed.");
+		}
+	}
 }

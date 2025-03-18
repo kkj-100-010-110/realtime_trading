@@ -8,32 +8,66 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <stdint.h>
-
-#include <curl/curl.h>	// HTTP/HTTPS request
+#include <time.h>
+#include <sys/stat.h>
+#include <pthread.h>
 
 #include "rb.h"
 
-#define OK_MSG "\033[96m"
-#define ERR_MSG "\033[91m"
-#define INFO_MSG "\033[93m"
-#define RESET_MSG "\033[0m"
-
-#define print_msg(io, msgtype, arg...) \
-	flockfile(io); \
-	fprintf(io, "["#msgtype"][%s/%s:%03d]", __FILE__, __FUNCTION__, __LINE__); \
-	fprintf(io, arg); \
-	fputc('\n', io); \
-	funlockfile(io);
+#define INFO "\033[93m[INFO]\033[0m"
+#define ERR "\033[91m[ERR]\033[0m"
+#define OK "\033[92m[OK]\033[0m"
 
 #define pr_err(arg...) \
-	fprintf(stderr, ERR_MSG); \
-	print_msg(stderr, ERR, arg) \
-	fprintf(stderr, RESET_MSG);
+	flockfile(stderr); \
+	fprintf(stderr, ERR arg); \
+	fputc('\n', stderr); \
+	funlockfile(stderr);
 
 #define pr_out(arg...) \
-	fprintf(stdout, INFO_MSG); \
-	print_msg(stdout, REP, arg) \
-	fprintf(stdout, RESET_MSG);
+	flockfile(stdout); \
+	fprintf(stdout, INFO arg); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
 
+#define pr_ok(arg...) \
+	flockfile(stdout); \
+	fprintf(stdout, OK arg); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+
+/* print transactions */
+
+#define TRADE "\033[96m[TRADE]\033[0m"
+#define ORDER "\033[94m[ORDER]\033[0m"
+#define CANCEL "\033[95m[CANCEL]\033[0m"
+
+#define pr_trade(arg...) \
+	flockfile(stdout); \
+	fprintf(stdout, TRADE arg); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+
+#define pr_order(arg...) \
+	flockfile(stdout); \
+	fprintf(stdout, ORDER arg); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+
+#define pr_cancel(arg...) \
+	flockfile(stdout); \
+	fprintf(stdout, CANCEL arg); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+
+#define MALLOC(p, size) \
+    do { \
+		p = malloc(size); \
+		memset(p, 0, size); \
+        if (!p) { \
+            pr_err("malloc failed: %s:%d\n", __FILE__, __LINE__); \
+            exit(EXIT_FAILURE); \
+        } \
+    } while (0)
 
 #endif//_COMMON_H_

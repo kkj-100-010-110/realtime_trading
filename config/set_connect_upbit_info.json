@@ -1,6 +1,0 @@
-{
-  "server_address": "api.upbit.com",
-  "server_port": 443,
-  "ssl_cert_path": "/etc/ssl/certs/ca-certificates.crt",
-  "websocket_path": "/websocket/v1"
-}

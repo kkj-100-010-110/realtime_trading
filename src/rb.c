@@ -1,4 +1,5 @@
-#include "rb.h"
+//#include "rb.h"
+#include "../include/rb.h"
 
 /* BASIS */
 
@@ -205,6 +206,7 @@ void rb_remove_max(RB_tree *t)
 void _rb_remove_min(KeyFree kf, DataFree df, RB_node **n)
 {
 	if (!(*n)->link[LEFT]) { // found the min
+		free_key_and_data(kf, df, n);
 		free((*n));
 		*n = NULL;
 		return;
@@ -228,6 +230,7 @@ void _rb_remove_max(KeyFree kf, DataFree df, RB_node **n)
 		rb_rotate_right(n);
 
 	if (!(*n)->link[RIGHT]) { // found the max
+		free_key_and_data(kf, df, n);
 		free((*n));
 		*n = NULL;
 		return;
@@ -507,6 +510,7 @@ void rb_print(RB_tree *t, int order)
  * 3 - postorder
  * 4 - each level in int
  * 5 - each level in string
+ * 6 - inorder string
  */
 void rb_print_node(RB_node *n, int order)
 {
@@ -531,7 +535,7 @@ void _print_inorder_string(RB_node *n)
 	if (!n) return;
 
 	_print_inorder_string(n->link[LEFT]);
-	printf("%s ", (char *)n->key);
+	printf("%s\n", (char *)n->key);
 	_print_inorder_string(n->link[RIGHT]);
 }
 
