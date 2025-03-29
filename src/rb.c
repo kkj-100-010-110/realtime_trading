@@ -170,6 +170,7 @@ void rb_remove_tree(RB_tree *t)
 {
 	while (t->root)
 		rb_remove(t, t->root->key);
+	free(t);
 }
 
 /*

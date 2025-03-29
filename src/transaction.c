@@ -24,7 +24,8 @@ void rotate_txn_file()
 
         txn_file = fopen("./transactions/txn_1.csv", "w");
 		if (!txn_file) {
-			pr_err("Failed to create new transaction file.");
+			LOG_ERR("fopen() failed.");
+			pr_err("fopen() failed.");
 			pthread_mutex_unlock(&txn_mutex);
 			exit(EXIT_FAILURE);
 		}
@@ -42,7 +43,8 @@ void save_transaction(const char *date, const char *time, const char *code,
     if (!txn_file) {
 		txn_file = fopen("./transactions/txn_1.csv", "a");
 		if (!txn_file) {
-			pr_err("Failed to open transaction file");
+			LOG_ERR("fopen() failed.");
+			pr_err("fopen() failed.");
 			pthread_mutex_unlock(&txn_mutex);
 			return;
 		}
@@ -67,7 +69,8 @@ void save_txn_task(void *arg)
     if (!txn_file) {
         txn_file = fopen("./transactions/txn_1.csv", "a");
 		if (!txn_file) {
-			pr_err("Failed to open transaction file");
+			LOG_ERR("fopen() failed.");
+			pr_err("fopen() failed.");
 			pthread_mutex_unlock(&txn_mutex);
 			return;
 		}

@@ -1,43 +1,50 @@
 #!/bin/bash
 
+# -----------------------------------------------------------------------------
+# ENV + FUNC
+# -----------------------------------------------------------------------------
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+# .env
+ENV_FILE="${SCRIPT_DIR}/../.env"
+# IP
+IP_FILE="/tmp/last_ip.txt"
+
+# function to send telegram message
+send_telegram() {
+	local MESSAGE="$1"
+    RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+        -d "chat_id=$TELEGRAM_CHAT_ID" \
+        -d "text=$MESSAGE" 2>/dev/null)
+    [[ "$RESPONSE" != *"\"ok\":true"* ]] && echo "Telegram API Error: $RESPONSE"
+}
+
+# -----------------------------------------------------------------------------
+# MAIN LOGIC
+# -----------------------------------------------------------------------------
+
 # load .env
-if [ -f .env ]; then
-    export $(grep -v '^#' ../.env | xargs)
+if [ -f "$ENV_FILE" ]; then
+    export $(grep -v '^#' "$ENV_FILE" | xargs)
 else
     echo "Failed to load .env"
     exit 1
 fi
 
-# IP
-IP_FILE="/tmp/last_ip.txt"
-
-# get the current public IP
+# check IP
 NEW_IP=$(curl -s ifconfig.me)
+OLD_IP=$(cat "$IP_FILE" 2>/dev/null || echo "")
 
-# check if there is an old IP
-if [ -f "$IP_FILE" ]; then
-    OLD_IP=$(cat "$IP_FILE")
-else
-    OLD_IP=""
-fi
-
-# check if IP has changed
 if [ "$NEW_IP" != "$OLD_IP" ]; then
     echo "IP changed: ($OLD_IP -> $NEW_IP)"
+	send_telegram $'IP changed: '"$OLD_IP -> $NEW_IP"\
+		$'\nUpdate UPbit API IP: '"$NEW_IP"\
+		$'\nhttps://upbit.com/mypage/open_api_management'
     echo "You better change the public IP as '$NEW_IP' for UPbit API"
-    echo "https://upbit.com/mypage/open_api_management"
-
     # change new IP
     echo "$NEW_IP" > "$IP_FILE"
-
-    # email-alarm
-    echo "IP has changed: $NEW_IP" | mail -s "IP has changed. You better update IP for UPbit API" gjk.100.010.110@gmail.com
-
-    # telegram-alarm
-    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
-        -d "chat_id=$TELEGRAM_CHAT_ID" \
-        -d "text=IP has changed ($OLD_IP -> $NEW_IP)%0A https://upbit.com/mypage/open_api_management"
+	echo "$(date "+%Y-%m-%d %H:%M:%S") - IP changed: $OLD_IP -> $NEW_IP"
 
 else
-    echo "IP hasn't changed ($NEW_IP)"
+	send_telegram "IP hasn't changed: $OLD_IP"
 fi

@@ -5,7 +5,7 @@ char *orderbook_json = NULL;
 char *ticker_orderbook_json = NULL;
 char *ticker_orderbook_trade = NULL;
 
-void clean_extern_json()
+void clear_extern_json()
 {
 	if (ticker_json) {
 		free(ticker_json);
@@ -25,12 +25,12 @@ void clean_extern_json()
 	}
 }
 
-void set_json_config()
+bool set_json_config()
 {
 	FILE *file = fopen("./config/markets.json", "r");
 	if (!file) {
-		pr_err("fopen failed.");
-		exit(EXIT_FAILURE);
+		pr_err("fopen() failed.");
+		return false;
 	}
 	fseek(file, 0, SEEK_END);
 	long length = ftell(file);
@@ -38,18 +38,17 @@ void set_json_config()
 
 	char *buffer = (char *)malloc(length + 1);
 	if (!buffer) {
-		pr_err("malloc failed.");
+		pr_err("malloc() failed.");
 		fclose(file);
-		exit(EXIT_FAILURE);
+		return false;
 	}
 
 	size_t read_size = fread(buffer, 1, length, file);
 	fclose(file);
-
 	if (read_size != length) {
-		pr_err("fread failed.");
+		pr_err("fread() failed.");
 		free(buffer);
-		exit(EXIT_FAILURE);
+		return false;
 	}
 	buffer[length] = '\0';
 
@@ -59,14 +58,14 @@ void set_json_config()
 	free(buffer);
 	if (!root) {
 		pr_err("json_loads() failed. %s", error.text);
-		exit(EXIT_FAILURE);
+		return false;
 	}
 
 	json_t *markets = json_object_get(root, "markets");
 	if (!json_is_array(markets)) {
-		pr_err("markets not array");
+		pr_err("json_is_array() failed.");
 		json_decref(root);
-		exit(EXIT_FAILURE);
+		return false;
 	}
 	json_incref(markets);  // Increase ref count since we're using it multiple times
 
@@ -115,9 +114,9 @@ void set_json_config()
 	ticker_orderbook_trade = json_dumps(ticker_orderbook_trade_request, JSON_COMPACT);
 
 	if (!ticker_json || !orderbook_json || !ticker_orderbook_json || !ticker_orderbook_trade) {
-		pr_err("json_dumps failed");
-		clean_extern_json(); // Free allocated strings
-		exit(EXIT_FAILURE);
+		pr_err("json_dumps() failed");
+		clear_extern_json(); // Free allocated strings
+		return false;
 	}
 
 	// Cleanup JSON objects
@@ -127,22 +126,25 @@ void set_json_config()
 	json_decref(ticker_orderbook_trade_request);
 	json_decref(markets);
 	json_decref(root);
+	return true;
 }
 
-/* WEBSOCKET JSON DATA */
+/* WEBSOCKET RESPONSE JSON DATA PARSE BEGIN */
 void parse_websocket_data(const char *data, size_t len)
 {
 	json_t *root;
 	json_error_t error;
 	root = json_loadb(data, len, 0, &error);
 	if (!root) {
+		LOG_ERR("json_loadb() failed: %s", error.text);
 		pr_err("json_loadb() failed: %s", error.text);
 		return;
 	}
 
 	const char *type_str = json_string_value(json_object_get(root, "type"));
 	if (!type_str) {
-		pr_err("failed to get type field.");
+		LOG_ERR("json_string_value() failed.");
+		pr_err("json_string_value() failed.");
 		json_decref(root);
 		return;
 	}
@@ -153,9 +155,7 @@ void parse_websocket_data(const char *data, size_t len)
         parse_orderbook_json(root);
     } else if (strcmp(type_str, "trade") == 0) {
         parse_trade_json(root);
-    } else {
-        pr_err("Unknown type: %s", type_str);
-    }
+	}
 	
 	// reference count to zero, the value is destroyed and no longer used.
 	json_decref(root);
@@ -165,35 +165,55 @@ void parse_ticker_json(json_t *root)
 {
 	// get info that you need from json data
     const char *code = json_string_value(json_object_get(root, "code"));
-    double opening_price = json_real_value(json_object_get(root, "opening_price"));
-    double high_price = json_real_value(json_object_get(root, "high_price"));
-    double low_price = json_real_value(json_object_get(root, "low_price"));
-    double trade_price = json_real_value(json_object_get(root, "trade_price"));
-    double prev_closing_price = json_real_value(json_object_get(root, "prev_closing_price"));
-    double acc_trade_volume = json_real_value(json_object_get(root, "acc_trade_volume"));
-    double acc_trade_price = json_real_value(json_object_get(root, "acc_trade_price"));
-    json_int_t timestamp = json_integer_value(json_object_get(root, "timestamp"));
-
-#if PRINT
-    printf("Code: %s\n", code);
-    printf("Opening Price: %.2f\n", opening_price);
-    printf("High Price: %.2f\n", high_price);
-    printf("Low Price: %.2f\n", low_price);
-    printf("Trade Price: %.2f\n", trade_price);
-    printf("Previous Closing Price: %.2f\n", prev_closing_price);
-    printf("Accumulated Trade Volume: %.2f\n", acc_trade_volume);
-    printf("Accumulated Trade Price: %.2f\n", acc_trade_price);
-    printf("Timestamp: %lld\n", (long long)timestamp);
-#endif//PRINT
+	int idx = get_code_index(code);
+	if (idx == -1) {
+		LOG_ERR("unknown code: %s", code);
+		pr_err("unknown code: %s", code);
+		return;
+	}
+	tickers[idx].code = codes[idx];
+	tickers[idx].trade_price = json_real_value(json_object_get(root, "trade_price"));
+	strcpy(tickers[idx].change, json_string_value(json_object_get(root, "change")));
+	tickers[idx].signed_change_price = json_real_value(json_object_get(root, "signed_change_price"));
+	tickers[idx].signed_change_rate = json_real_value(json_object_get(root, "signed_change_rate"));
+	tickers[idx].high_price = json_real_value(json_object_get(root, "high_price"));
+	tickers[idx].low_price = json_real_value(json_object_get(root, "low_price"));
+    tickers[idx].opening_price = json_real_value(json_object_get(root, "opening_price"));
+    tickers[idx].prev_closing_price = json_real_value(json_object_get(root, "prev_closing_price"));
+    tickers[idx].trade_volume = json_real_value(json_object_get(root, "trade_volume"));
+    tickers[idx].acc_trade_volume_24h = json_real_value(json_object_get(root, "acc_trade_volume_24h"));
+    tickers[idx].acc_trade_price_24h = json_real_value(json_object_get(root, "acc_trade_price_24h"));
+	tickers[idx].highest_52_week_price = json_real_value(json_object_get(root, "highest_52_week_price"));
+	tickers[idx].lowest_52_week_price = json_real_value(json_object_get(root, "lowest_52_week_price"));
+	strcpy(tickers[idx].market_state, json_string_value(json_object_get(root, "market_state")));
 }
 
 void parse_orderbook_json(json_t *root)
 {
 	// get info that you need from json data
     const char *code = json_string_value(json_object_get(root, "code"));
-    json_int_t timestamp = json_integer_value(json_object_get(root, "timestamp"));
-    double total_ask_size = json_real_value(json_object_get(root, "total_ask_size"));
-    double total_bid_size = json_real_value(json_object_get(root, "total_bid_size"));
+	int idx = get_code_index(code);
+	if (idx == -1) {
+		LOG_ERR("unknown code: %s");
+		pr_err("unknown code: %s", code);
+		return;
+	}
+	orderbooks[idx].code = codes[idx];
+    orderbooks[idx].timestamp = json_integer_value(json_object_get(root, "timestamp"));
+    orderbooks[idx].total_bid_size = json_real_value(json_object_get(root, "total_bid_size"));
+    orderbooks[idx].total_ask_size = json_real_value(json_object_get(root, "total_ask_size"));
+
+    // orderbook units
+    json_t *orderbook_units = json_object_get(root, "orderbook_units");
+	if (json_is_array(orderbook_units)) {
+		json_t *first_unit = json_array_get(orderbook_units, 0);
+		orderbooks[idx].best_bid_price = json_real_value(json_object_get(first_unit, "bid_price"));
+		orderbooks[idx].best_bid_size = json_real_value(json_object_get(first_unit, "bid_size"));
+		orderbooks[idx].best_ask_price = json_real_value(json_object_get(first_unit, "ask_price"));
+		orderbooks[idx].best_ask_size = json_real_value(json_object_get(first_unit, "ask_size"));
+		orderbooks[idx].spread = orderbooks[idx].best_ask_price - orderbooks[idx].best_bid_price;
+		orderbooks[idx].bid_ask_ratio = orderbooks[idx].best_bid_size / orderbooks[idx].best_ask_size;
+	}
 
 #if PRINT
     // orderbook unit
@@ -208,15 +228,15 @@ void parse_orderbook_json(json_t *root)
             double bid_size = json_real_value(json_object_get(unit, "bid_size"));
 
             // ask & bit price unit
-            printf("Unit %zu: Ask Price=%.2f, Ask Size=%.2f, Bid Price=%.2f, Bid Size=%.2f\n",
+            pr_out("Unit %zu: Ask Price=%.2f, Ask Size=%.2f, Bid Price=%.2f, Bid Size=%.2f\n",
                    index, ask_price, ask_size, bid_price, bid_size);
         }
     }
 
-    printf("Code: %s\n", code);
-    printf("Timestamp: %lld\n", (long long)timestamp);
-    printf("Total Ask Size: %.2f\n", total_ask_size);
-    printf("Total Bid Size: %.2f\n", total_bid_size);
+    pr_out("Code: %s", code);
+    pr_out("Timestamp: %lld", (long long)timestamp);
+    pr_out("Total Ask Size: %.2f", total_ask_size);
+    pr_out("Total Bid Size: %.2f", total_bid_size);
 #endif//PRINT
 }
 
@@ -234,36 +254,42 @@ void parse_trade_json(json_t *root)
 			const char *ask_bid = json_string_value(json_object_get(root, "ask_bid"));
 			double trade_price = json_real_value(json_object_get(root, "trade_price"));
 			double trade_volume = json_real_value(json_object_get(root, "trade_volume"));
+			long trade_timestamp = json_integer_value(json_object_get(root, "trade_timestamp"));
 			strcpy(txn->date, trade_date);
 			strcpy(txn->time, trade_time);
 			strcpy(txn->code, code);
 			strcpy(txn->side, ask_bid);
 			txn->price = trade_price;
 			txn->volume = trade_volume;
-			enqueue_task(save_txn_task, (void *)txn);
+
 			pr_trade("%s, %s Code=%s, Side=%s, Price=%.8f, Volume=%.8f",
 					trade_date, trade_time, code, trade_price, trade_volume, ask_bid);
+
+			OrderStatus *os = create_order_status(code, 1, trade_timestamp, 0,
+					0, 5, NULL);
+			enqueue_task(get_closed_orders_status_task, (void *)os); 
+			enqueue_task(save_txn_task, (void *)txn);
 		}
 	}
-
-	// rest_api
 }
-/* WEBSOCKET JSON DATA */
+/* WEBSOCKET RESPONSE JSON DATA PARSE END */
 
-/* REST API JSON DATA */
-void parse_balance_json(const char *data)
+/* REST API RESPONSE JSON DATA PARSE BEGIN */
+void parse_account_json(const char *data)
 {
 	json_t *root;
 	json_error_t error;
 
 	root = json_loads(data, 0, &error);
 	if (!root) {
-		pr_err("json_loads() failed. %s", error.text);
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
 		return;
 	}
 
 	if (!json_is_array(root)) {
-		pr_err("Invalid JSON format.");
+		LOG_ERR("json_is_array() failed.");
+		pr_err("json_is_array() failed.");
 		json_decref(root);
 		return;
 	}
@@ -274,24 +300,28 @@ void parse_balance_json(const char *data)
 		json_t *currency = json_object_get(value, "currency");
 		json_t *balance = json_object_get(value, "balance");
 		json_t *locked = json_object_get(value, "locked");
-		if (json_is_string(currency)
-			&& json_is_string(balance)
-			&& json_is_string(locked)) {
-			pr_out("Currency: %s | Balance: %s | Locked: %s\n",
-					json_string_value(currency),
-					json_string_value(balance),
-					json_string_value(locked));
+		if (json_is_string(currency) && json_is_string(balance) && json_is_string(locked)) {
+			const char *c = json_string_value(currency);
+			const char *b = json_string_value(balance);
+			const char *l = json_string_value(locked);
+			int idx = get_index(c);
+			strcpy(account[idx].currency, c);
+			account[idx].balance = atof(b);
+			account[idx].locked = atof(l);
+			pr_out("Currency: %s | Balance: %.2f | Locked: %.2f\n",
+					account[idx].currency, account[idx].balance, account[idx].locked);
 		}
 	}
 	json_decref(root);
 }
 
-void parse_order_response_json(const char *data)
+void parse_place_order_response(const char *data)
 {
 	json_error_t error;
     json_t *root = json_loads(data, 0, &error);
     if (!root) {
-        pr_err("JSON parsing failed: %s", error.text);
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
         return;
     }
 
@@ -302,6 +332,9 @@ void parse_order_response_json(const char *data)
     double price = json_real_value(json_object_get(root, "price"));
     const char *state = json_string_value(json_object_get(root, "state"));
 
+	// account update
+
+	// order update
 	insert_order(uuid, market, volume, price, side, state);
 
 	pr_order("Market: %s, Side: %s, Volume: %.8f, Price: %.8f, State: %s, UUID: %s",
@@ -310,18 +343,47 @@ void parse_order_response_json(const char *data)
     json_decref(root);
 }
 
-void parse_cancel_response_json(const char *data)
+void parse_market_order_response(const char *data)
+{
+	json_error_t error;
+    json_t *root = json_loads(data, 0, &error);
+    if (!root) {
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
+        return;
+    }
+
+    const char *uuid = json_string_value(json_object_get(root, "uuid"));
+    const char *market = json_string_value(json_object_get(root, "market"));
+    const char *side = json_string_value(json_object_get(root, "side"));
+    double volume = json_real_value(json_object_get(root, "volume"));
+    double price = json_real_value(json_object_get(root, "price"));
+    const char *state = json_string_value(json_object_get(root, "state"));
+
+	// account update
+
+	// order update
+	insert_order(uuid, market, volume, price, side, state);
+
+	pr_order("Market: %s, Side: %s, Volume: %.8f, Price: %.8f, State: %s, UUID: %s",
+			 market, side, volume, price, state, uuid);
+
+    json_decref(root);
+}
+
+void parse_cancel_order_response_json(const char *data)
 {
 	json_t *root;
     json_error_t error;
 
     root = json_loads(data, 0, &error);
     if (!root) {
-        pr_err("JSON parsing failed: %s\n", error.line, error.text);
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
         return;
     }
 
-    const char *uuid = json_string_value(json_object_get(root, "uuid"));
+	const char *uuid = json_string_value(json_object_get(root, "uuid"));
     const char *side = json_string_value(json_object_get(root, "side"));
     const char *state = json_string_value(json_object_get(root, "state"));
     const char *market = json_string_value(json_object_get(root, "market"));
@@ -331,8 +393,153 @@ void parse_cancel_response_json(const char *data)
 	pr_order("Market: %s, Side: %s, Executed Volume: %.8f, Price: %.2f, State: %s, UUID: %s",
 			 market, side, executed_volume, price, state, uuid);
 
+	if (strcmp(state, "wait") == 0) {
+		update_order_status(uuid, state);
+		enqueue_retry_task(uuid, INITIAL_BACKOFF_MS);
+	} else if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {
+		pr_cancel("uuid: %s, state: %s", uuid, state);
+		remove_order(uuid);
+	}
+
     json_decref(root);
 }
 
+void parse_get_order_status(const char *data)
+{
+	json_t *root;
+	json_error_t error;
 
-/* REST API JSON DATA */
+	root = json_loads(data, 0, &error);
+    if (!root) {
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
+        return;
+    }
+
+	const char *uuid = json_string_value(json_object_get(root, "uuid"));
+    const char *state = json_string_value(json_object_get(root, "state"));
+
+	pr_out("order: %s, state: %s", uuid, state);
+	update_order_status(uuid, state);
+	if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {
+		pr_cancel("uuid: %s, state: %s", uuid, state);
+		remove_order(uuid);
+	}
+	json_decref(root);
+}
+
+void parse_get_open_orders_status(const char * data)
+{
+	json_t *root;
+	json_error_t error;
+
+	root = json_loads(data, 0, &error);
+	if (!root) {
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
+		return;
+	}
+
+	size_t index;
+	json_t *value;
+	json_array_foreach(root, index, value) {
+		const char *uuid = json_string_value(json_object_get(value, "uuid"));
+		const char *state = json_string_value(json_object_get(value, "state"));
+		const char *market = json_string_value(json_object_get(value, "market"));
+		const char *side = json_string_value(json_object_get(value, "side"));
+		const char *ord_type = json_string_value(json_object_get(value, "ord_type"));
+		double price = json_real_value(json_object_get(value, "price"));
+		double volume = json_real_value(json_object_get(value, "volume"));
+		double executed_volume = json_real_value(json_object_get(value, "executed_volume"));
+
+		pr_out("Open Order: uuid=%s, state=%s, market=%s, side=%s, type=%s, price=%.2f, volume=%.8f, executed_volume=%.8f",
+				uuid, state, market, side, ord_type, price, volume, executed_volume);
+	}
+	json_decref(root);
+}
+
+void parse_get_closed_orders_status(const char *data)
+{
+	json_t *root;
+	json_error_t error;
+
+	root = json_loads(data, 0, &error);
+    if (!root) {
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
+        return;
+    }
+
+	size_t index;
+	json_t *value;
+	json_array_foreach(root, index, value) {
+		const char *uuid = json_string_value(json_object_get(value, "uuid"));
+		const char *state = json_string_value(json_object_get(value, "state"));
+		const char *market = json_string_value(json_object_get(value, "market"));
+		const char *side = json_string_value(json_object_get(value, "side"));
+		const char *ord_type = json_string_value(json_object_get(value, "ord_type"));
+		double price = json_real_value(json_object_get(value, "price"));
+		double volume = json_real_value(json_object_get(value, "volume"));
+		double executed_volume = json_real_value(json_object_get(value, "executed_volume"));
+		remove_order(uuid);
+		pr_out("Closed Order: uuid=%s, state=%s, market=%s, side=%s, type=%s, price=%.2f, volume=%.8f, executed_volume=%.8f",
+				uuid, state, market, side, ord_type, price, volume, executed_volume);
+	}
+	json_decref(root);
+}
+
+void parse_cancel_by_bulk_response(const char *data)
+{
+    json_error_t error;
+    json_t *root = json_loads(data, 0, &error);
+
+    if (!root) {
+		LOG_ERR("json_loads() failed: %s", error.text);
+		pr_err("json_loads() failed: %s", error.text);
+        return;
+    }
+
+    // success
+    json_t *success = json_object_get(root, "success");
+    if (success) {
+        int success_count = json_integer_value(json_object_get(success, "count"));
+        json_t *success_orders = json_object_get(success, "orders");
+        if (json_is_array(success_orders)) {
+            size_t index;
+            json_t *value;
+            json_array_foreach(success_orders, index, value) {
+                const char *uuid = json_string_value(json_object_get(value, "uuid"));
+
+				// test
+                const char *market = json_string_value(json_object_get(value, "market"));
+                pr_cancel("Successfully canceled order: uuid=%s, market=%s", uuid, market);
+
+				remove_order(uuid);
+
+				//test
+				print_order(orders->root);
+            }
+        }
+    }
+
+    // failed
+    json_t *failed = json_object_get(root, "failed");
+    if (failed) {
+        int failed_count = json_integer_value(json_object_get(failed, "count"));
+        json_t *failed_orders = json_object_get(failed, "orders");
+        if (json_is_array(failed_orders)) {
+            size_t index;
+            json_t *value;
+			json_array_foreach(failed_orders, index, value) {
+				const char *uuid = json_string_value(json_object_get(value, "uuid"));
+				const char *market = json_string_value(json_object_get(value, "market"));
+				pr_err("failed to cancel order: uuid=%s, market=%s", uuid, market);
+				LOG_ERR("failed to cancel order: uuid=%s, market=%s", uuid, market);
+				enqueue_retry_task(uuid, INITIAL_BACKOFF_MS);
+			}
+        }
+    }
+
+    json_decref(root);
+}
+/* REST API RESPONSE JSON DATA PARSE END */

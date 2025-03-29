@@ -2,13 +2,30 @@
 
 Account *account = NULL;
 
-void init_account()
+static const char *currencies[COUNT] = {
+	"KRW",
+	"XRP",
+    "ADA",
+    "DOGE"
+};
+
+int get_index(const char *currency)
 {
-	MALLOC(account, sizeof(account) * Count);
+	for (int i = 0; i < COUNT; i+=1) {
+		if (strcmp(currency, currencies[i]) == 0)
+			return i;
+	}
+	return -1;
 }
 
-void terminate_account()
+void init_account()
 {
-	if (account)
+	MALLOC(account, sizeof(Account) * COUNT);
+}
+
+void clear_account()
+{
+	if (account) {
 		free(account);
+	}
 }

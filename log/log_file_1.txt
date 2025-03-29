@@ -1,16 +1,6 @@
-[2025/03/18 08:11:29:0832] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
-[2025/03/18 08:11:29:2283] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
-[2025/03/18 08:11:29:2405] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
-[2025/03/18 08:11:29:2604] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
-[2025/03/18 08:11:44:0465] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
-[2025/03/18 08:11:44:4870] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 43.203.89.75
-[2025/03/18 08:11:46:7439] W: lws_smd_message_pending: timing out queued message 0x9cb2e70
-[2025/03/18 08:11:46:7462] W: lws_smd_message_pending: timing out queued message 0x9cb2fb0
-[2025/03/18 08:11:46:7466] W: lws_smd_message_pending: timing out queued message 0x9cb30f0
-[2025/03/18 08:11:46:7468] W: lws_smd_message_pending: timing out queued message 0x9cb3230
-[2025/03/18 08:11:46:7471] W: lws_smd_message_pending: timing out queued message 0x9cb3370
-[2025/03/18 08:11:46:7474] W: lws_smd_message_pending: timing out queued message 0x9cb3400
-[2025/03/18 08:12:08:1985] N: __lws_lc_untag:  -- [wsi|0|pipe] (0) 38.967s
-[2025/03/18 08:12:08:3587] N: __lws_lc_untag:  -- [vh|1|default||-1] (1) 39.098s
-[2025/03/18 08:12:08:3601] N: __lws_lc_untag:  -- [wsicli|0|WS/h1/default/api.upbit.com] (0) 24.313s
-[2025/03/18 08:12:08:3631] N: __lws_lc_untag:  -- [vh|0|netlink] (0) 39.122s
+[2025/03/30 02:00:22:6562] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
+[2025/03/30 02:00:22:6567] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
+[2025/03/30 02:00:22:6569] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
+[2025/03/30 02:00:22:6573] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
+[2025/03/30 02:00:22:9028] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
+[2025/03/30 02:00:22:9591] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 15.165.85.1

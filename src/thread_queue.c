@@ -32,6 +32,14 @@ void thread_queue_destroy()
 	pthread_cond_broadcast(&tq->not_empty);
 	pthread_mutex_unlock(&tq->lock);
 
+	while (tq->count > 0) {
+        Task t;
+        dequeue_task(&t);
+        if (t.task_function == process_retry_task) {
+            free(t.arg);  // RetryTask 메모리 해제
+        }
+    }
+
 	for (int i = 0; i < MAX_CPU; i+=1) {
 		pthread_join(threads[i], NULL);
 	}
@@ -111,3 +119,45 @@ void *worker_thread(void *arg)
 	}
 	return NULL;
 }
+
+void enqueue_retry_task(const char *uuid, int initial_backoff_ms)
+{
+    RetryTask *task = malloc(sizeof(RetryTask));
+    strncpy(task->uuid, uuid, sizeof(task->uuid));
+    task->retry_count = 0;
+    task->next_retry_time = time(NULL) + (initial_backoff_ms / 1000);
+
+    // push retry task into the thread queue
+    enqueue_task(process_retry_task, task);
+}
+
+void process_retry_task(void *arg)
+{
+	RetryTask *task = (RetryTask *)arg;
+	time_t now = time(NULL);
+
+	// if it's not the retry time, push it into a queue again
+	if (now < task->next_retry_time) {
+		enqueue_task(process_retry_task, task);
+		return;
+	}
+
+	// check the order state("wait", "done" and "cancel")
+	int state = check_order_status(task->uuid); // FAILED, PENDING and COMEPLETED
+
+	// when state is FAILED or PENDING, retry again. 
+	if (state == 0 || state == -1) {
+		if (task->retry_count++ < MAX_RETRY) {
+			int backoff_ms = INITIAL_BACKOFF_MS * (1 << task->retry_count);
+			task->next_retry_time = now + (backoff_ms / 1000);
+			enqueue_task(process_retry_task, task);
+		} else { // has all retries done but it failed. 
+			LOG_ERR("Max retries exceeded for order %s", task->uuid);
+			free(task);
+		}
+	} else { // COMPLETED
+		remove_order(task->uuid);
+		free(task);
+	}
+}
+

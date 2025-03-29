@@ -8,19 +8,70 @@ size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
     return total_size;
 }
 
+/* task function format for thread queue */
 void get_account_info_task(void *arg)
 {
 	(void)arg;
 	get_account_info();
 }
 
+void place_order_task(void *arg)
+{
+	Order *o = (Order *)arg;
+	if (strcmp(o->side, "ask") == 0) {
+		place_sell_order(o->market, o->volume, o->price);
+	} else if (strcmp(o->side, "bid") == 0) {
+		place_buy_order(o->market, o->volume, o->price);
+	}
+	free(o);
+}
+
+void market_price_order_task(void *arg)
+{
+	Order *o = (Order *)arg;
+	market_order(o->market, o->side, o->volume);
+	free(o);
+}
+
+void get_order_status_task(void *arg)
+{
+	char *uuid = (char *)arg;
+	get_order_status(uuid);
+	free(uuid);
+}
+
+void get_closed_orders_status_task(void *arg)
+{
+	OrderStatus *os = (OrderStatus *)arg;
+	get_closed_orders_status(os->market, closed_states, os->states_count,
+			os->start_time, os->end_time, os->limit, os->order_by);
+	free(os);
+}
+
+void cancel_order_task(void *arg)
+{
+	char *uuid = (char *)arg;
+	cancel_order(uuid);
+	free(uuid);
+}
+
+void cancel_by_bulk_task(void *arg)
+{
+	CancelOption *c = (CancelOption *)arg;
+	cancel_by_bulk(c->side, c->pairs, c->excluded_pairs, c->quote_currencies,
+			c->count, c->order_by);
+	free(c);
+}
+
+
+/* functions */
 void get_account_info()
 {
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
-    char jwt[512];
-    char auth_header[1024];
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
 	char *response = NULL;
 
     generate_jwt(jwt, sizeof(jwt)); // JWT
@@ -29,26 +80,27 @@ void get_account_info()
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
     headers = curl_slist_append(headers, auth_header);
 
-	MALLOC(response, BUFFER_SIZE);
+	MALLOC(response, RESPONSE_BUFFER_SIZE);
 
     // init & configure CURL
     curl = curl_easy_init();
     if (curl) {
 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-        curl_easy_setopt(curl, CURLOPT_URL, API_URL_ACCOUNT);
+        curl_easy_setopt(curl, CURLOPT_URL, API_URL_ACCOUNTS);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
 
 		// print debugging info
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L); // 1L(active)
 
         res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
-			pr_err("get_account_info() failed: %s", curl_easy_strerror(res));
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
 		} else {
-			parse_balance_json(response);
+			parse_account_json(response);
 		}
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
@@ -56,19 +108,15 @@ void get_account_info()
 	free(response);
 }
 
-void place_order_task(void *arg)
-{
-}
-
 void place_order(const char *market, const char *side, double volume, double price)
 {
 	CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
-    char jwt[512];
-    char auth_header[1024];
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char post_data[POST_BUFFER_SIZE];
     char *response = NULL;
-    char post_data[1024];
 
     generate_jwt(jwt, sizeof(jwt));
 
@@ -84,7 +132,7 @@ void place_order(const char *market, const char *side, double volume, double pri
 			"{\"market\": \"%s\", \"%s\": \"bid\", \"volume\": \"%.8f\", \"price\": \"%.8f\", \"ord_type\": \"limit\"}",
 			market, side, volume, price);
 
-	MALLOC(response, BUFFER_SIZE);
+	MALLOC(response, RESPONSE_BUFFER_SIZE);
 
     // init & configure CURL
     curl = curl_easy_init();
@@ -100,9 +148,10 @@ void place_order(const char *market, const char *side, double volume, double pri
         // proceed request
         res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
-            pr_err("place_buy_order() failed: %s", curl_easy_strerror(res));
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
 		} else {
-			parse_order_response_json(response);
+			parse_place_order_response(response);
 		}
 
         curl_easy_cleanup(curl);
@@ -121,60 +170,14 @@ void place_sell_order(const char *market, double volume, double price)
 	place_order(market, "ask", volume, price);
 }
 
-void cancel_order(const char *uuid)
-{
-	CURL *curl;
-    CURLcode res;
-    struct curl_slist *headers = NULL;
-    char jwt[512];
-    char auth_header[1024];
-    char *response = NULL;
-    char url[1024];
-
-    generate_jwt(jwt, sizeof(jwt));
-
-	// autorization header
-    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
-    headers = curl_slist_append(headers, auth_header);
-
-    // content-type header
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-
-	// url + uuid
-    snprintf(url, sizeof(url), "%s?uuid=%s", API_URL_ORDER, uuid);
-
-	MALLOC(response, BUFFER_SIZE);
-
-    curl = curl_easy_init();
-    if (curl) {
-		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-
-        res = curl_easy_perform(curl);
-        if (res != CURLE_OK) {
-            pr_err("cancel_order() failed: %s", curl_easy_strerror(res));
-        } else {
-            pr_cancel("Cancel Order Response: %s", response);
-        }
-
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-	}
-	free(response);
-}
-
-void market_order(const char *market, const char *side, double amount)
+void market_order(const char *market, const char *side, double volume)
 {
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
-    char jwt[512];
-    char auth_header[1024];
-    char post_data[256];
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char post_data[POST_BUFFER_SIZE];
     char *response = NULL;
 
     generate_jwt(jwt, sizeof(jwt));
@@ -190,17 +193,18 @@ void market_order(const char *market, const char *side, double amount)
     if (strcmp(side, "bid") == 0) {
         snprintf(post_data, sizeof(post_data),
                  "{\"market\":\"%s\",\"side\":\"%s\",\"ord_type\":\"price\",\"price\":\"%.0f\"}",
-                 market, side, amount);
+                 market, side, volume);
     } else if (strcmp(side, "ask") == 0) {
         snprintf(post_data, sizeof(post_data),
                  "{\"market\":\"%s\",\"side\":\"%s\",\"ord_type\":\"market\",\"volume\":\"%.8f\"}",
-                 market, side, amount);
+                 market, side, volume);
     } else {
         pr_err("Invalid order side: %s", side);
+        LOG_ERR("Invalid order side: %s", side);
         return;
     }
 
-	MALLOC(response, BUFFER_SIZE);
+	MALLOC(response, RESPONSE_BUFFER_SIZE);
 
     curl = curl_easy_init();
     if (curl) {
@@ -215,9 +219,58 @@ void market_order(const char *market, const char *side, double amount)
         res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
-            pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
         } else {
             printf("Market Order Response: %s\n", response);
+			parse_market_order_response(response);
+        }
+
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+	}
+	free(response);
+}
+
+void cancel_order(const char *uuid)
+{
+	CURL *curl;
+    CURLcode res;
+    struct curl_slist *headers = NULL;
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char url[URL_BUFFER_SIZE];
+    char *response = NULL;
+
+    generate_jwt(jwt, sizeof(jwt));
+
+	// autorization header
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
+    headers = curl_slist_append(headers, auth_header);
+
+    // content-type header
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+	// url + uuid
+    snprintf(url, sizeof(url), "%s?uuid=%s", API_URL_ORDER, uuid);
+
+	MALLOC(response, RESPONSE_BUFFER_SIZE);
+
+    curl = curl_easy_init();
+    if (curl) {
+		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+        } else {
+			parse_cancel_order_response_json(response);
         }
 
         curl_easy_cleanup(curl);
@@ -231,9 +284,9 @@ void get_order_status(const char *uuid)
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
-    char jwt[512];
-    char auth_header[1024];
-    char url[512];
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char url[URL_BUFFER_SIZE];
     char *response = NULL;
 
     generate_jwt(jwt, sizeof(jwt));
@@ -242,9 +295,9 @@ void get_order_status(const char *uuid)
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
     headers = curl_slist_append(headers, auth_header);
 
-    snprintf(url, sizeof(url), "https://api.upbit.com/v1/order?uuid=%s", uuid);
+    snprintf(url, sizeof(url), API_URL_ORDER "?uuid=%s", uuid);
 
-	MALLOC(response, BUFFER_SIZE);
+	MALLOC(response, RESPONSE_BUFFER_SIZE);
 
     curl = curl_easy_init();
     if (curl) {
@@ -257,9 +310,10 @@ void get_order_status(const char *uuid)
         res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
-            pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
         } else {
-            printf("Order Status Response: %s\n", response);
+			parse_get_order_status(response);
         }
 
         curl_easy_cleanup(curl);
@@ -268,18 +322,77 @@ void get_order_status(const char *uuid)
 	free(response);
 }
 
-void cancel_by_bulk(const char *cancel_side, const char *pairs,
-					const char *excluded_pairs, const char *quote_currencies,
-					int count, const char *order_by)
+int check_order_status(const char *uuid)
 {
-	CURL *curl;
+    CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
-    char jwt[512];
-    char auth_header[1024];
-    char url[1024];
-    char body[BUFFER_SIZE];
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char url[URL_BUFFER_SIZE];
     char *response = NULL;
+
+    generate_jwt(jwt, sizeof(jwt));
+
+	// autorization header
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
+    headers = curl_slist_append(headers, auth_header);
+
+    snprintf(url, sizeof(url), API_URL_ORDER "?uuid=%s", uuid);
+
+	MALLOC(response, RESPONSE_BUFFER_SIZE);
+
+    curl = curl_easy_init();
+    if (curl) {
+		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+        res = curl_easy_perform(curl);
+
+		if (res != CURLE_OK) {
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+		} else {
+			json_t *root;
+			json_error_t error;
+
+			root = json_loads(response, 0, &error);
+			if (!root) {
+				pr_err("json_loads() failed: %s", error.text);
+				LOG_ERR("json_loads() failed: %s", error.text);
+				return FAILED;
+			}
+			const char *state = json_string_value(json_object_get(root, "state"));
+
+			if (strcmp(state, "wait") == 0) { // it needs to be improved when the program is bigger
+				return PENDING;
+			} else if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {
+				pr_cancel("uuid: %s, state: %s", uuid, state);
+				remove_order(uuid);
+			}
+			json_decref(root);
+		}
+		curl_easy_cleanup(curl);
+		curl_slist_free_all(headers);
+	}
+	free(response);
+	return COMPLETED;
+}
+
+void get_open_orders_status(const char *market, const char **states,
+		size_t states_count, int page, int limit, const char *order_by)
+{
+    CURL *curl;
+    CURLcode res;
+    struct curl_slist *headers = NULL;
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char url[URL_BUFFER_SIZE];
+    char *response = NULL;
+    json_t *params;
 
     generate_jwt(jwt, sizeof(jwt));
 
@@ -287,51 +400,191 @@ void cancel_by_bulk(const char *cancel_side, const char *pairs,
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
     headers = curl_slist_append(headers, auth_header);
 
-    // content-type header
-    headers = curl_slist_append(headers, "Content-Type: application/json");
+    // request parameters
+    params = json_object();
+    if (market) json_object_set_new(params, "market", json_string(market));
+
+    if (states && states_count > 0) {
+        json_t *states_array = json_array();
+        for (size_t i = 0; i < states_count; i++) {
+            json_array_append_new(states_array, json_string(states[i]));
+        }
+        json_object_set_new(params, "states[]", states_array);
+    }
+    if (page > 0) json_object_set_new(params, "page", json_integer(page));
+    if (limit > 0) {
+        limit = (limit > 100) ? 100 : limit;
+        json_object_set_new(params, "limit", json_integer(limit));
+    }
+    if (order_by != NULL) json_object_set_new(params, "order_by", json_string(order_by));
+
+    // URL + request parameters
+    char *params_str = json_dumps(params, JSON_COMPACT);
+    snprintf(url, sizeof(url), API_URL_ORDERS_OPEN "?%s", params_str);
+    free(params_str);
+    json_decref(params);
+
+    MALLOC(response, RESPONSE_BUFFER_SIZE);
+
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+        } else {
+			parse_get_open_orders_status(response);
+        }
+
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+    }
+    free(response);
+}
+
+void get_closed_orders_status(const char *market, const char **states,
+		size_t states_count, long start_time, long end_time,
+		int limit, const char *order_by)
+{
+    CURL *curl;
+    CURLcode res;
+    struct curl_slist *headers = NULL;
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char url[URL_BUFFER_SIZE];
+	char *response = NULL;
+	json_t *params;
+
+    generate_jwt(jwt, sizeof(jwt));
+
+    // authorization header
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
+    headers = curl_slist_append(headers, auth_header);
+
+    // request parameters
+    params = json_object();
+	if (market) json_object_set_new(params, "market", json_string(market));
+
+	if (states && states_count > 0) {
+		json_t *states_array = json_array();
+		for (size_t i = 0; i < states_count; i++) {
+			json_array_append_new(states_array, json_string(states[i]));
+		}
+		json_object_set_new(params, "states[]", states_array);
+	} else {
+		json_t *default_states = json_array();
+		json_array_append_new(default_states, json_string("done"));
+		json_array_append_new(default_states, json_string("cancel"));
+		json_object_set_new(params, "states[]", default_states);
+	}
+
+	// ISO-8601 or Timestamp, using timestamp here
+	if (start_time) json_object_set_new(params, "start_time", json_integer(start_time));
+    if (end_time) json_object_set_new(params, "end_time", json_integer(end_time));
+
+    if (limit > 0) {
+        limit = (limit > 1000) ? 1000 : limit;
+        json_object_set_new(params, "limit", json_integer(limit));
+    }
+    if (order_by) json_object_set_new(params, "order_by", json_string(order_by));
+
+    // URL + request parameters
+    char *params_str = json_dumps(params, JSON_COMPACT);
+    snprintf(url, sizeof(url), API_URL_ORDERS_CLOSED "?%s", params_str);
+    free(params_str);
+    json_decref(params);
+
+    MALLOC(response, RESPONSE_BUFFER_SIZE);
+
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+			pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+			LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+		} else {
+			parse_get_closed_orders_status(response);
+        }
+
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+    }
+    free(response);
+}
+
+void cancel_by_bulk(const char *cancel_side, const char *pairs,
+                    const char *excluded_pairs, const char *quote_currencies,
+                    int count, const char *order_by)
+{
+    CURL *curl;
+    CURLcode res;
+    struct curl_slist *headers = NULL;
+    char jwt[JWT_BUFFER_SIZE];
+    char auth_header[HEADER_BUFFER_SIZE];
+    char url[URL_BUFFER_SIZE];
+    char *response = NULL;
+    json_t *params;
+    char *params_str;
+
+    // cannot take pairs and quote_currencies together
+    if (pairs != NULL && quote_currencies != NULL) {
+		pr_err("cancel_by_bulk() failed.");
+		LOG_ERR("cancel_by_bulk() failed.");
+        return;
+    }
+
+    generate_jwt(jwt, sizeof(jwt));
+
+    // authorization header
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", jwt);
+    headers = curl_slist_append(headers, auth_header);
+
+    // create query parameter
+    params = json_object();
+    if (cancel_side != NULL) { // cancel_side
+        json_object_set_new(params, "cancel_side", json_string(cancel_side));
+    } else {
+        json_object_set_new(params, "cancel_side", json_string("all")); // 기본값
+    }
+    if (pairs != NULL) { // pairs or quote_currencies
+        json_object_set_new(params, "pairs", json_string(pairs));
+    } else if (quote_currencies != NULL) {
+        json_object_set_new(params, "quote_currencies", json_string(quote_currencies));
+    }
+    if (excluded_pairs != NULL) { // excluded_pairs
+        json_object_set_new(params, "excluded_pairs", json_string(excluded_pairs));
+    }
+    if (count > 0) { // count
+        json_object_set_new(params, "count", json_integer(count));
+    } else {
+        json_object_set_new(params, "count", json_integer(20)); // default
+    }
+    if (order_by != NULL) { // order_by
+        json_object_set_new(params, "order_by", json_string(order_by));
+    } else {
+        json_object_set_new(params, "order_by", json_string("desc")); // default
+    }
+
+    params_str = json_dumps(params, JSON_COMPACT);
+    json_decref(params);
 
     // URL
-    snprintf(url, sizeof(url), "https://api.upbit.com/v1/orders");
+    snprintf(url, sizeof(url), API_URL_ORDERS_OPEN "?%s", params_str);
+    free(params_str);
 
-    // create request body
-    snprintf(body, sizeof(body), "{");
-    if (cancel_side != NULL) {
-        strcat(body, "\"cancel_side\":\"");
-        strcat(body, cancel_side);
-        strcat(body, "\",");
-    }
-    if (pairs != NULL) {
-        strcat(body, "\"pairs\":\"");
-        strcat(body, pairs);
-        strcat(body, "\",");
-    }
-    if (excluded_pairs != NULL) {
-        strcat(body, "\"excluded_pairs\":\"");
-        strcat(body, excluded_pairs);
-        strcat(body, "\",");
-    }
-    if (quote_currencies != NULL) {
-        strcat(body, "\"quote_currencies\":\"");
-        strcat(body, quote_currencies);
-        strcat(body, "\",");
-    }
-    if (count > 0) {
-        char count_str[16];
-        snprintf(count_str, sizeof(count_str), "\"count\":%d,", count);
-        strcat(body, count_str);
-    }
-    if (order_by != NULL) {
-        strcat(body, "\"order_by\":\"");
-        strcat(body, order_by);
-        strcat(body, "\",");
-    }
-    // remove last comma
-    if (body[strlen(body) - 1] == ',') {
-        body[strlen(body) - 1] = '\0';
-    }
-    strcat(body, "}");
-
-    MALLOC(response, BUFFER_SIZE);
+    MALLOC(response, RESPONSE_BUFFER_SIZE);
 
     curl = curl_easy_init();
     if (curl) {
@@ -339,15 +592,15 @@ void cancel_by_bulk(const char *cancel_side, const char *pairs,
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body); // request body
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
 
         res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
-            pr_err("cancel_orders_bulk() failed: %s", curl_easy_strerror(res));
+            pr_err("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+            LOG_ERR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
         } else {
-            pr_cancel("Cancel Orders Bulk Response: %s", response);
+            parse_cancel_by_bulk_response(response);
         }
 
         curl_easy_cleanup(curl);

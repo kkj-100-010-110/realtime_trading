@@ -1,8 +1,7 @@
 #ifndef _TRANSACTION_H
 #define _TRANSACTION_H
 
-//#include "common.h"
-#include "../include/common.h"
+#include "common.h"
 
 #define MAX_FILE_SIZE 10 * 1024 * 1024
 #define MAX_TRANSACTION_FILES 5

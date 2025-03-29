@@ -9,6 +9,8 @@
 #include <openssl/buffer.h>
 #include <uuid/uuid.h>
 
+#define JWT_BUFFER_SIZE 512
+
 void generate_jwt(char *jwt, size_t jwt_size);
 
 #endif//_JWT_H

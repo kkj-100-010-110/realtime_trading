@@ -12,14 +12,15 @@ enum {
 };
 
 typedef struct {
-	char *currency;
+	char currency[10];
 	double balance;
 	double locked;
 } Account;
 
 extern Account *account;
 
+int get_index(const char *currency);
 void init_account();
-void terminate_account();
+void clear_account();
 
 #endif//_ACCOUNT_HANDLER_H

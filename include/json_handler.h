@@ -6,27 +6,33 @@
 #include "rest_api.h"
 #include "transaction.h"
 #include "thread_queue.h"
+#include "account_handler.h"
+#include "symbol_handler.h"
 
 #include <jansson.h>
 
-#define PRINT 0
-
+/* EXTERN VARIABLE */
 extern char *ticker_json;
 extern char *orderbook_json;
 extern char *ticker_orderbook_json;
 extern char *ticker_orderbook_trade;
+void clear_extern_json();
+bool set_json_config();
 
-void clean_extern_json();
-void set_json_config();
-
+/* WEBSOCKET RESPONSE JSON DATA PARSE */
 void parse_websocket_data(const char *data, size_t len);
 void parse_ticker_json(json_t *root);
 void parse_orderbook_json(json_t *root);
 void parse_trade_json(json_t *root);
 
-void parse_balance_json(const char *data);
-void parse_order_response_json(const char *data);
-void parse_buy_response_json(const char *data);
-void parse_sell_response_json(const char *data);
+/* REST API RESPONSE JSON DATA PARSE */
+void parse_account_json(const char *data);
+void parse_place_order_response(const char *data);
+void parse_market_order_response(const char *data);
+void parse_cancel_order_response_json(const char *data);
+void parse_get_order_status(const char *data);
+void parse_get_open_orders_status(const char * data);
+void parse_get_closed_orders_status(const char *data);
+void parse_cancel_by_bulk_response(const char *data);
 
 #endif//_JSON_HANDLER_H

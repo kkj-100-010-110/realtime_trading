@@ -1,7 +1,7 @@
 NAME = program
 CC = gcc
 CFLAGS = -g #-Werror -Wall -Wextra -g
-LDFLAGS = -lwebsockets -lssl -lcrypto -lcurl -ljansson -luuid
+LDFLAGS = -lwebsockets -lssl -lcrypto -lcurl -ljansson -luuid -lncurses -lpthread
 RM = rm -rf
 SCRIPT_DIR = scripts
 
@@ -16,6 +16,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/transaction.c \
        $(SRC_DIR)/websocket.c \
        $(SRC_DIR)/order_handler.c \
+       $(SRC_DIR)/account_handler.c \
        $(SRC_DIR)/json_handler.c \
        $(SRC_DIR)/rest_api.c \
        $(SRC_DIR)/jwt.c \

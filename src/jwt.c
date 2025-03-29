@@ -5,7 +5,8 @@ void generate_jwt(char *jwt, size_t jwt_size)
     const char *api_key = getenv("UPBIT_API_KEY");
     const char *secret_key = getenv("UPBIT_SECRET_KEY");
     if (!api_key || !secret_key) {
-		pr_err("No api & secret key");
+		LOG_ERR("no api & secret key");
+		pr_err("no api & secret key");
         return;
     }
 

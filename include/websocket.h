@@ -6,10 +6,15 @@
 
 #include <libwebsockets.h> // lws
 
+extern atomic_bool ws_running;
+
 /* WEBSOCKET */
-struct lws_context *init_socket();
-struct lws *connect_websocket(struct lws_context *context);
-void cleanup_websocket(struct lws_context *context);
+void init_socket();
+void connect_websocket();
+void cleanup_websocket();
+void *websocket_thread(void *arg);
+void websocket_thread_run();
+
 /* REQUEST */
 void ticker_request(struct lws *wsi);
 void orderbook_request(struct lws *wsi);
