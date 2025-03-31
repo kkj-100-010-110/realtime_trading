@@ -15,12 +15,12 @@ typedef struct {
 	char currency[10];
 	double balance;
 	double locked;
-} Account;
+} account_t;
 
-extern Account *account;
+extern account_t *g_account;
 
 int get_index(const char *currency);
 void init_account();
-void clear_account();
+void destroy_account();
 
 #endif//_ACCOUNT_HANDLER_H

@@ -30,7 +30,7 @@ typedef struct {
 	double highest_52_week_price;
 	double lowest_52_week_price;
 	char market_state[9];
-} SymTicker;
+} sym_ticker_t;
 
 typedef struct {
 	const char *code;
@@ -43,12 +43,12 @@ typedef struct {
 	double best_ask_size;
 	double spread;
 	double bid_ask_ratio;
-} SymOrderbook;
+} sym_orderbook_t;
 
-extern SymTicker *tickers;
-extern SymOrderbook *orderbooks;
-extern const char *codes[SYM_COUNT];
-extern const char *symbols[SYM_COUNT];
+extern sym_ticker_t *g_tickers;
+extern sym_orderbook_t *g_orderbooks;
+extern const char *g_codes[SYM_COUNT];
+extern const char *g_symbols[SYM_COUNT];
 
 int get_code_index(const char *market);
 int get_symbol_index(const char *market);

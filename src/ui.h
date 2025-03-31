@@ -51,31 +51,31 @@ static void ticker_orderbook_ui()
 	for (int i = 0; i < SYM_COUNT; i++) {
         int col_start = i * col_width + 2;
 
-        mvprintw(1, col_start + 2, "[%s] Real-time Price and Orderbook", tickers[i].code);
+        mvprintw(1, col_start + 2, "[%s] Real-time Price and Orderbook", g_tickers[i].code);
         mvprintw(2, col_start, "---------------------------------------------");
-        mvprintw(3, col_start + 2, "Current Price: %.2f KRW", tickers[i].trade_price);
-        mvprintw(4, col_start + 2, "Change: %.2f KRW (%.2f%%) [%s]", tickers[i].signed_change_price,
-				tickers[i].signed_change_rate * 100, tickers[i].change);
+        mvprintw(3, col_start + 2, "Current Price: %.2f KRW", g_tickers[i].trade_price);
+        mvprintw(4, col_start + 2, "Change: %.2f KRW (%.2f%%) [%s]", g_tickers[i].signed_change_price,
+				g_tickers[i].signed_change_rate * 100, g_tickers[i].change);
         mvprintw(5, col_start + 2, "High: %.2f KRW | Low: %.2f KRW",
-                 tickers[i].high_price, tickers[i].low_price);
+                 g_tickers[i].high_price, g_tickers[i].low_price);
         mvprintw(6, col_start + 2, "Prev Close: %.2f KRW | Open: %.2f KRW",
-                 tickers[i].prev_closing_price, tickers[i].opening_price);
+                 g_tickers[i].prev_closing_price, g_tickers[i].opening_price);
         mvprintw(7, col_start, "---------------------------------------------");
         mvprintw(8, col_start + 2, "Orderbook (Best Bid / Ask)");
         mvprintw(9, col_start + 2, "Bid: %.2f KRW (%.2f %s)",
-                 orderbooks[i].best_bid_price, orderbooks[i].best_bid_size, symbols[i]);
+                 g_orderbooks[i].best_bid_price, g_orderbooks[i].best_bid_size, g_symbols[i]);
         mvprintw(10, col_start + 2, "Ask: %.2f KRW (%.2f %s)",
-                 orderbooks[i].best_ask_price, orderbooks[i].best_ask_size, symbols[i]);
-        mvprintw(11, col_start + 2, "Spread: %.2f KRW", orderbooks[i].spread);
-        mvprintw(12, col_start + 2, "Bid/Ask Ratio: %.2f", orderbooks[i].bid_ask_ratio);
+                 g_orderbooks[i].best_ask_price, g_orderbooks[i].best_ask_size, g_symbols[i]);
+        mvprintw(11, col_start + 2, "Spread: %.2f KRW", g_orderbooks[i].spread);
+        mvprintw(12, col_start + 2, "Bid/Ask Ratio: %.2f", g_orderbooks[i].bid_ask_ratio);
         mvprintw(13, col_start, "--------------------------------------------");
-        mvprintw(14, col_start + 2, "Recent Volume: %.2f %s", tickers[i].trade_volume, symbols[i]);
-        mvprintw(15, col_start + 2, "24h Volume: %.2f %s", tickers[i].acc_trade_volume_24h, symbols[i]);
-        mvprintw(16, col_start + 2, "24h Trade Amount: %.2f KRW", tickers[i].acc_trade_price_24h);
+        mvprintw(14, col_start + 2, "Recent Volume: %.2f %s", g_tickers[i].trade_volume, g_symbols[i]);
+        mvprintw(15, col_start + 2, "24h Volume: %.2f %s", g_tickers[i].acc_trade_volume_24h, g_symbols[i]);
+        mvprintw(16, col_start + 2, "24h Trade Amount: %.2f KRW", g_tickers[i].acc_trade_price_24h);
         mvprintw(17, col_start, "--------------------------------------------");
-        mvprintw(18, col_start + 2, "52W High: %.2f KRW", tickers[i].highest_52_week_price);
-        mvprintw(19, col_start + 2, "52W Low: %.2f KRW", tickers[i].lowest_52_week_price);
-        mvprintw(20, col_start + 2, "Market State: %s", tickers[i].market_state);
+        mvprintw(18, col_start + 2, "52W High: %.2f KRW", g_tickers[i].highest_52_week_price);
+        mvprintw(19, col_start + 2, "52W Low: %.2f KRW", g_tickers[i].lowest_52_week_price);
+        mvprintw(20, col_start + 2, "Market State: %s", g_tickers[i].market_state);
         mvprintw(21, col_start, "--------------------------------------------");
     }
 }
@@ -83,13 +83,13 @@ static void ticker_orderbook_ui()
 static void balance_ui()
 {
 	mvprintw(23, 2, "Currency: %s\t Balance: %.2f\t Locked: %.2f",
-			account[0].currency, account[0].balance, account[0].locked);
+			g_account[0].currency, g_account[0].balance, g_account[0].locked);
 	mvprintw(24, 2, "Currency: %s\t Balance: %.2f\t Locked: %.2f",
-			account[1].currency, account[1].balance, account[1].locked);
+			g_account[1].currency, g_account[1].balance, g_account[1].locked);
 	mvprintw(25, 2, "Currency: %s\t Balance: %.2f\t Locked: %.2f",
-			account[2].currency, account[2].balance, account[2].locked);
+			g_account[2].currency, g_account[2].balance, g_account[2].locked);
 	mvprintw(26, 2, "Currency: %s\t Balance: %.2f\t Locked: %.2f",
-			account[3].currency, account[3].balance, account[3].locked);
+			g_account[3].currency, g_account[3].balance, g_account[3].locked);
 }
 
 static int menu_ui()
@@ -232,7 +232,7 @@ static int menu_ui()
 			if (get_user_input(ok, sizeof(ok))) {
 				if (ok[0] == 'y') {
 					// send order rest api
-					Order *o = make_order(codes[market_idx], order_cmd, price,
+					order_t *o = make_order(g_codes[market_idx], order_cmd, price,
 							volume, NULL);
 					enqueue_task(place_order_task, (void *)o);
 					mvprintw(29, 87 + strlen(price_str) + strlen(volume_str), "Sent.");
@@ -257,12 +257,12 @@ static int menu_ui()
 
 static void order_ui()
 {
-	int col_width = COLS / MAX_ORDER;
-	for (int i = 0; i < MAX_ORDER; i++) {
+	int col_width = COLS / MAX_ORDER_NUM;
+	for (int i = 0; i < MAX_ORDER_NUM; i++) {
         int col_start = i * col_width + 2;
 
-		if (order_arr != NULL && order_arr[i] != NULL) {
-			Order *o = order_arr[i];
+		if (g_order_arr != NULL && g_order_arr[i] != NULL) {
+			order_t *o = g_order_arr[i];
 			mvprintw(31, col_start + 2, "[%d]ORDER", i);
 			mvprintw(32, col_start + 2, "%s", o->market);
 			mvprintw(33, col_start + 2, "Price: %.2f", o->price);

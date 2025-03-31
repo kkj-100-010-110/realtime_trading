@@ -21,6 +21,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/rest_api.c \
        $(SRC_DIR)/jwt.c \
        $(SRC_DIR)/symbol_handler.c \
+       $(SRC_DIR)/curl_pool.c \
        $(SRC_DIR)/rb.c \
        $(SRC_DIR)/queue.c
 

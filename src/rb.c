@@ -1,5 +1,4 @@
-//#include "rb.h"
-#include "../include/rb.h"
+#include "rb.h"
 
 /* BASIS */
 
@@ -7,7 +6,7 @@
  * Return the size of the sub-tree of root.
  * - Take a tree as its parameter
  */
-size_t rb_size_t(RB_tree *t)
+size_t rb_size_t(rb_tree_t *t)
 {
 	if (!t || !t->root) return 0;
 	return t->root->size;
@@ -17,7 +16,7 @@ size_t rb_size_t(RB_tree *t)
  * Return the size of the sub-tree of a node.
  * - Take a node as its parameter
  */
-size_t rb_size_n(RB_node *n)
+size_t rb_size_n(rb_node_t *n)
 {
 	if (!n) return 0;
 	return n->size;
@@ -26,9 +25,9 @@ size_t rb_size_n(RB_node *n)
 /*
  * Create a tree.
  */
-RB_tree *rb_create(int (*comparison)(const void*, const void*), void (*key_free)(void *), void (*data_free)(void *))
+rb_tree_t *rb_create(int (*comparison)(const void*, const void*), void (*key_free)(void *), void (*data_free)(void *))
 {
-	RB_tree *t = malloc(sizeof(RB_tree));
+	rb_tree_t *t = malloc(sizeof(rb_tree_t));
 	if (!t) {
 		fprintf(stderr, "Error: malloc() failed in rb_create()\n");
 		return NULL;
@@ -43,9 +42,9 @@ RB_tree *rb_create(int (*comparison)(const void*, const void*), void (*key_free)
 /*
  * Create a node with key and data.
  */
-RB_node *rb_node_create(void *key, void *data)
+rb_node_t *rb_node_create(void *key, void *data)
 {
-	RB_node *n = malloc(sizeof(RB_node));
+	rb_node_t *n = malloc(sizeof(rb_node_t));
 	if (!n) {
 		fprintf(stderr, "Error: malloc() failed in rb_node_create()\n");
 		return NULL;
@@ -63,7 +62,7 @@ RB_node *rb_node_create(void *key, void *data)
  * Insert a node into the tree.
  * - Take a tree, key and data as parameters
  */
-void rb_insert(RB_tree *t, void *key, void *data)
+void rb_insert(rb_tree_t *t, void *key, void *data)
 {
 	if (!t) {
 		fprintf(stderr, "Error: Tree is null in rb_insert()\n");
@@ -79,7 +78,7 @@ void rb_insert(RB_tree *t, void *key, void *data)
  * - One is different which is balancing trees
  * - If the node that has the same key, replace the data with input data
  */
-void _rb_insert(RB_node **n, Compare f, DataFree df, void *key, void *data)
+void _rb_insert(rb_node_t **n, compare_func_t f, data_free_func_t df, void *key, void *data)
 {
 	if (!(*n))
 	{
@@ -107,7 +106,7 @@ void _rb_insert(RB_node **n, Compare f, DataFree df, void *key, void *data)
 /*
  * Remove the node with the key
  */
-void rb_remove(RB_tree *t, void *key)
+void rb_remove(rb_tree_t *t, void *key)
 {
 	if (!rb_contain(t, key)) {
 		fprintf(stderr, "Error: There is not the node with the key in rb_remove()\n");
@@ -128,7 +127,7 @@ void rb_remove(RB_tree *t, void *key)
  *  - if it is an internal node, swap the minimum node of its right one(swap the successor for the
  *  target).
  */
-void _rb_remove(RB_node **n, Compare f, KeyFree kf, DataFree df, void *key)
+void _rb_remove(rb_node_t **n, compare_func_t f, key_free_func_t kf, data_free_func_t df, void *key)
 {
 	if (f(key, (*n)->key) < 0)
 	{
@@ -151,7 +150,7 @@ void _rb_remove(RB_node **n, Compare f, KeyFree kf, DataFree df, void *key)
 		
 		// remove the node
 		if (f(key, (*n)->key) == 0) {
-			RB_node *tmp = rb_min_n((*n)->link[RIGHT]);
+			rb_node_t *tmp = rb_min_n((*n)->link[RIGHT]);
 			free_key_and_data(kf, df, n);
 			(*n)->key = tmp->key;
 			(*n)->data = tmp->data;
@@ -166,7 +165,7 @@ void _rb_remove(RB_node **n, Compare f, KeyFree kf, DataFree df, void *key)
 /*
  * Remove the whole tree
  */
-void rb_remove_tree(RB_tree *t)
+void rb_remove_tree(rb_tree_t *t)
 {
 	while (t->root)
 		rb_remove(t, t->root->key);
@@ -176,7 +175,7 @@ void rb_remove_tree(RB_tree *t)
 /*
  * Remove the node with the minimum key value
  */
-void rb_remove_min(RB_tree *t)
+void rb_remove_min(rb_tree_t *t)
 {
 	if (!t->root) {
 		fprintf(stderr, "Error: Tree is empty in rb_remove_min()\n");
@@ -189,7 +188,7 @@ void rb_remove_min(RB_tree *t)
 /*
  * Remove the node with the maximum key value
  */
-void rb_remove_max(RB_tree *t)
+void rb_remove_max(rb_tree_t *t)
 {
 	if (!t->root) {
 		fprintf(stderr, "Error: Tree is empty in rb_remove_min()\n");
@@ -204,7 +203,7 @@ void rb_remove_max(RB_tree *t)
  * - If the left child node of the current node and its left child node are black
  * - Bottom-up with fix_up() to balance the tree
  */
-void _rb_remove_min(KeyFree kf, DataFree df, RB_node **n)
+void _rb_remove_min(key_free_func_t kf, data_free_func_t df, rb_node_t **n)
 {
 	if (!(*n)->link[LEFT]) { // found the min
 		free_key_and_data(kf, df, n);
@@ -225,7 +224,7 @@ void _rb_remove_min(KeyFree kf, DataFree df, RB_node **n)
  * - If the left link of the current node is black, call rb_rotate_right()
  * - If the right link of the current node and its left link are black, call rb_move_red_right()
  */
-void _rb_remove_max(KeyFree kf, DataFree df, RB_node **n)
+void _rb_remove_max(key_free_func_t kf, data_free_func_t df, rb_node_t **n)
 {
 	if (rb_is_red((*n)->link[LEFT]))
 		rb_rotate_right(n);
@@ -248,7 +247,7 @@ void _rb_remove_max(KeyFree kf, DataFree df, RB_node **n)
  * Move the red link to the left.
  * - check if the left child node of the right child of the node is red
  */
-void rb_move_red_left(RB_node **n)
+void rb_move_red_left(rb_node_t **n)
 {
 	rb_color_flip(n);
 
@@ -263,7 +262,7 @@ void rb_move_red_left(RB_node **n)
  * Move the red link to the right.
  * - check if the left child node of the left child of the node is red
  */
-void rb_move_red_right(RB_node **n)
+void rb_move_red_right(rb_node_t **n)
 {
 	rb_color_flip(n);
 
@@ -286,7 +285,7 @@ void free_data(void *data)
 	free(data);
 }
 
-void free_key_and_data(KeyFree kf, DataFree df, RB_node **n)
+void free_key_and_data(key_free_func_t kf, data_free_func_t df, rb_node_t **n)
 {
 	if (kf) {
 		kf((*n)->key);
@@ -307,7 +306,7 @@ void free_key_and_data(KeyFree kf, DataFree df, RB_node **n)
  * - color check
  * 	- if left and right nodes of n are red, change colors
  */
-void fix_up(RB_node **n)
+void fix_up(rb_node_t **n)
 {
 	if (!(*n)) {
 		fprintf(stderr, "Error: Node is null in fix_up()\n");
@@ -324,7 +323,7 @@ void fix_up(RB_node **n)
  * Find the node.
  * - Take a node, a function pointer and key as parameters
  */
-RB_node *rb_find(RB_node *n, Compare f, void *key)
+rb_node_t *rb_find(rb_node_t *n, compare_func_t f, void *key)
 {
 	if (!n) return NULL;
 	else if (f(n->key, key) == 0) return n;
@@ -335,7 +334,7 @@ RB_node *rb_find(RB_node *n, Compare f, void *key)
 /*
  * Check if the color of the node is red.
  */
-bool rb_is_red(RB_node *n)
+bool rb_is_red(rb_node_t *n)
 {
 	if (!n) return BLACK; // null node is black
 	return n->color;
@@ -344,26 +343,26 @@ bool rb_is_red(RB_node *n)
 /*
  * Check if the tree has the node with the key.
  */
-bool rb_contain(RB_tree *t, void *key)
+bool rb_contain(rb_tree_t *t, void *key)
 {
 	if (!t) {
 		fprintf(stderr, "Error: Tree is null in rb_contain()\n");
 		return NULL;
 	}
-	RB_node *tmp = rb_find(t->root, t->compare, key);
+	rb_node_t *tmp = rb_find(t->root, t->compare, key);
 	return tmp == NULL ? false : true;
 }
 
 /*
  * Return the max value of the tree.
  */
-void *rb_max_t(RB_tree *t)
+void *rb_max_t(rb_tree_t *t)
 {
 	if (!t) {
 		fprintf(stderr, "Error: Tree is null in rb_max_t()\n");
 		return NULL;
 	}
-	RB_node *res = rb_max_n(t->root);
+	rb_node_t *res = rb_max_n(t->root);
 	if (!res) return NULL;
 	return res->key;
 }
@@ -371,7 +370,7 @@ void *rb_max_t(RB_tree *t)
 /*
  * Return the max value of the sub-tree of the node.
  */
-RB_node *rb_max_n(RB_node *n)
+rb_node_t *rb_max_n(rb_node_t *n)
 {
 	if (!n) {
 		fprintf(stderr, "Error: Node is null in rb_max_n()\n");
@@ -385,13 +384,13 @@ RB_node *rb_max_n(RB_node *n)
 /*
  * Return the min value of the tree.
  */
-void *rb_min_t(RB_tree *t)
+void *rb_min_t(rb_tree_t *t)
 {
 	if (!t) {
 		fprintf(stderr, "Error: Tree is null in rb_min_t()\n");
 		return NULL;
 	}
-	RB_node *res = rb_min_n(t->root);
+	rb_node_t *res = rb_min_n(t->root);
 	if (!res) return NULL;
 	return res->key;
 }
@@ -399,7 +398,7 @@ void *rb_min_t(RB_tree *t)
 /*
  * Return the min value of the sub-tree of the node.
  */
-RB_node *rb_min_n(RB_node *n)
+rb_node_t *rb_min_n(rb_node_t *n)
 {
 	if (!n) {
 		fprintf(stderr, "Error: Node is null in rb_min_n()\n");
@@ -416,9 +415,9 @@ RB_node *rb_min_n(RB_node *n)
  * Rotate the node and its right child node to the left.
  * - When the red link to attach the right of the target node.
  */
-void rb_rotate_left(RB_node **n)
+void rb_rotate_left(rb_node_t **n)
 {
-	RB_node *tmp = (*n)->link[RIGHT];
+	rb_node_t *tmp = (*n)->link[RIGHT];
 	(*n)->link[RIGHT] = tmp->link[LEFT];
 	tmp->link[LEFT] = (*n);
 	tmp->color = (*n)->color;
@@ -432,9 +431,9 @@ void rb_rotate_left(RB_node **n)
  * Rotate the node and its right child node to the right.
  * - When the red link is subsequent to the other red link.
  */
-void rb_rotate_right(RB_node **n)
+void rb_rotate_right(rb_node_t **n)
 {
-	RB_node *tmp = (*n)->link[LEFT];
+	rb_node_t *tmp = (*n)->link[LEFT];
 	(*n)->link[LEFT] = tmp->link[RIGHT];
 	tmp->link[RIGHT] = (*n);
 	tmp->color = (*n)->color;
@@ -450,7 +449,7 @@ void rb_rotate_right(RB_node **n)
  * Flip the colors of the node and its children.
  * - When both links are red.
  */
-void rb_color_flip(RB_node **n)
+void rb_color_flip(rb_node_t **n)
 {
 	(*n)->color = !(*n)->color;
 	(*n)->link[LEFT]->color = !(*n)->link[LEFT]->color;
@@ -463,12 +462,12 @@ void rb_color_flip(RB_node **n)
 /*
  * Color change
  */
-Color rb_color_change(Color c) { return c == RED ? BLACK : RED; }
+color_t rb_color_change(color_t c) { return c == RED ? BLACK : RED; }
 
 /*
  * Get what color the node has
  */
-Color rb_color(RB_node *n) { return n->color; }
+color_t rb_color(rb_node_t *n) { return n->color; }
 
 /* UTILITY */
 
@@ -480,11 +479,11 @@ Color rb_color(RB_node *n) { return n->color; }
  * values. If p1 is the same as p2, return 0.
  */
 
-int comparison_s(const void *p1, const void *p2)
+int comparison_str(const void *p1, const void *p2)
 {
 	return strcmp((const char*)p1, (const char*)p2);
 }
-int comparison_i(const void *p1, const void *p2)
+int comparison_int(const void *p1, const void *p2)
 {
 	return *(int*)p1 > *(int*)p2 ? 1 : *(int*)p1 < *(int*)p2 ? -1 : 0;
 }
@@ -499,7 +498,7 @@ int comparison_i(const void *p1, const void *p2)
  * 4 - each level in int
  * 5 - each level in string
  */
-void rb_print(RB_tree *t, int order)
+void rb_print(rb_tree_t *t, int order)
 {
 	rb_print_node(t->root, order);
 }
@@ -513,7 +512,7 @@ void rb_print(RB_tree *t, int order)
  * 5 - each level in string
  * 6 - inorder string
  */
-void rb_print_node(RB_node *n, int order)
+void rb_print_node(rb_node_t *n, int order)
 {
 	if (!n) {
 		printf("it's empty.\n");
@@ -531,7 +530,7 @@ void rb_print_node(RB_node *n, int order)
     putchar('\n');
 }
 
-void _print_inorder_string(RB_node *n)
+void _print_inorder_string(rb_node_t *n)
 {
 	if (!n) return;
 
@@ -541,7 +540,7 @@ void _print_inorder_string(RB_node *n)
 }
 
 /* root->left-> right */
-void _print_preorder(RB_node *n)
+void _print_preorder(rb_node_t *n)
 {
     if (!n) return;
 
@@ -554,7 +553,7 @@ void _print_preorder(RB_node *n)
     _print_preorder(n->link[RIGHT]);
 }
 /* left->root->right */
-void _print_inorder(RB_node *n)
+void _print_inorder(rb_node_t *n)
 {
     if (!n) return;
 
@@ -568,7 +567,7 @@ void _print_inorder(RB_node *n)
     _print_inorder(n->link[RIGHT]);
 }
 /* left->right->root */
-void _print_postorder(RB_node *n)
+void _print_postorder(rb_node_t *n)
 {
     if (!n) return;
 
@@ -581,16 +580,16 @@ void _print_postorder(RB_node *n)
     printf("%d ", *(int *)n->key);
 }
 /* each level */
-void _print_level_i(RB_node *n)
+void _print_level_i(rb_node_t *n)
 {
     int depth = 0;
-	Queue *q = qcreate();
+	queue_t *q = qcreate();
     qpush(q, n);
     while (qsize(q)) {
         printf("Depth-%d:", depth);
         int size = qsize(q);
         for (int i = 0; i < size; i++) {
-            RB_node *tmp = qfront(q);
+            rb_node_t *tmp = qfront(q);
             qpop(q);
 			if (rb_is_red(tmp)) {
 				printf(TEXT_RED);
@@ -617,16 +616,16 @@ void _print_level_i(RB_node *n)
 	q = NULL;
 }
 
-void _print_level_s(RB_node *n)
+void _print_level_s(rb_node_t *n)
 {
     int depth = 0;
-	Queue *q = qcreate();
+	queue_t *q = qcreate();
     qpush(q, n);
     while (qsize(q)) {
         printf("Depth-%d:", depth);
         int size = qsize(q);
         for (int i = 0; i < size; i++) {
-            RB_node *tmp = qfront(q);
+            rb_node_t *tmp = qfront(q);
             qpop(q);
 			if (rb_is_red(tmp)) {
 				printf(TEXT_RED);

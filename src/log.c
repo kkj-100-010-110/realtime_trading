@@ -71,7 +71,7 @@ void init_log()
 	lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE, log_emit);
 }
 
-void terminate_log()
+void destroy_log()
 {
 	pthread_mutex_lock(&log_mutex);
 
@@ -84,7 +84,7 @@ void terminate_log()
 
 void logging_task(void *arg)
 {
-    LogTaskArg *lta = (LogTaskArg *)arg;
+    log_task_arg_t *lta = (log_task_arg_t *)arg;
 
     logging(lta->fmt, lta->args);
 
@@ -94,8 +94,8 @@ void logging_task(void *arg)
 
 void do_log(const char *fmt, ...)
 {
-	LogTaskArg *lta;
-	lta = (LogTaskArg *)malloc(sizeof(LogTaskArg));
+	log_task_arg_t *lta;
+	lta = (log_task_arg_t *)malloc(sizeof(log_task_arg_t));
 	if (!lta) {
 		fprintf(log_file, "[ERR][%s:%d] malloc() failed.\n", __FILE__, __LINE__);
 		return;

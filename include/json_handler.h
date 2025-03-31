@@ -12,12 +12,13 @@
 #include <jansson.h>
 
 /* EXTERN VARIABLE */
-extern char *ticker_json;
-extern char *orderbook_json;
-extern char *ticker_orderbook_json;
-extern char *ticker_orderbook_trade;
-void clear_extern_json();
-bool set_json_config();
+extern char *g_ticker_json;
+extern char *g_orderbook_json;
+extern char *g_ticker_orderbook_json;
+extern char *g_ticker_orderbook_trade;
+
+void init_json_config();
+void destroy_json_config();
 
 /* WEBSOCKET RESPONSE JSON DATA PARSE */
 void parse_websocket_data(const char *data, size_t len);

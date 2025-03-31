@@ -16,11 +16,12 @@
 #include "rb.h"
 #include "log.h"
 
-/* switch */
+/* SWITCH */
 #define UI_ON 0
 #define PRINT 0
+#define CHECK_TRACK 0
 
-/* print macro options */
+/* PRINT MACRO OPTIONS */
 #define INFO "\033[93m[INFO] \033[0m"
 #define ERROR "\033[91m[ERROR] \033[0m"
 #define OK "\033[92m[OK] \033[0m"
@@ -30,103 +31,118 @@
 
 #define pr_err(arg...) \
 	flockfile(stderr); \
-	fprintf(stderr, ERROR arg); \
+	fprintf(stderr, ERROR "[%s:%d] ", __FILE__, __LINE__, arg); \
 	fputc('\n', stderr); \
 	funlockfile(stderr);
 
 #define pr_out(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, INFO arg); \
+	fprintf(stdout, INFO "[%s:%d] ", __FILE__, __LINE__, arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_ok(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, OK arg); \
+	fprintf(stdout, OK "[%s:%d] ", __FILE__, __LINE__, arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_trade(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, TRADE arg); \
+	fprintf(stdout, TRADE "[%s:%d] ", __FILE__, __LINE__, arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_order(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, ORDER arg); \
+	fprintf(stdout, ORDER "[%s:%d] ", __FILE__, __LINE__, arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_cancel(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, CANCEL arg); \
+	fprintf(stdout, CANCEL "[%s:%d] ", __FILE__, __LINE__, arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
-/* RESOURCE */
-typedef enum {
+/* RESOURCE MANAGEMENT */
+/******************************************************************************
+ * fucntions beginning with init_ & destroy_ do not use this macro            *
+ * only for temporary objects									              *
+ ******************************************************************************/
+typedef enum resource_type_e {
 	RES_MEM,
 	RES_LOG,
-    RES_CURL,
-    RES_WEBSOCKET,
+	RES_TXN,
+	RES_JSON_CONFIG,
+	RES_ORDER_HANDLER,
+	RES_SYM_INFO,
+	RES_ACCOUNT,
+	RES_CURL,
     RES_THREAD_QUEUE,
-    RES_ACCOUNT,
-    RES_JSON,
-    RES_UI
-} resource_type_e;
+    RES_UI,
+    RES_WEBSOCKET,
+} resource_type_t;
 
 typedef struct resource_node_s {
     void* resource;
-    resource_type_e type;
-    struct resource_node* prev;
+    resource_type_t type;
+    struct resource_node_s* next;
 } resource_node_t;
 
-resource_node_t* g_resources = NULL;
+extern resource_node_t* g_resources;
+extern pthread_mutex_t g_resources_mtx;
 
-#define TRACK_RESOURCE(res, type) \
+#define TRACK_RESOURCE(res, input_type) \
     do { \
         resource_node_t* node = malloc(sizeof(resource_node_t)); \
         if (!node) { \
-            pr_err("[ERR][%s:%d] malloc() failed.", __FILE__, __LINE__); \
+            pr_err("malloc() failed."); \
             exit(EXIT_FAILURE); \
         } \
+		printf("[TRACK][%s:%d] %p (type: %d)\n", __FILE__, __LINE__, res, input_type); \
         node->resource = res; \
-        node->type = type; \
-        node->prev = g_resources; \
+        node->type = input_type; \
+		pthread_mutex_lock(&g_resources_mtx); \
+        node->next = g_resources; \
         g_resources = node; \
+		pthread_mutex_unlock(&g_resources_mtx); \
     } while (0)
 
 #define UNTRACK_RESOURCE(res) \
     do { \
+		printf("[UNTRACK][%s:%d] %p\n", __FILE__, __LINE__, res); \
+		pthread_mutex_lock(&g_resources_mtx); \
         resource_node_t **current = &g_resources; \
         while (*current) { \
             if ((*current)->resource == (res)) { \
                 resource_node_t *tmp = *current; \
-                *current = (*current)->prev; \
+                *current = (*current)->next; \
                 free(tmp); \
                 break; \
             } \
-            current = &(*current)->prev; \
+            current = &(*current)->next; \
         } \
+		pthread_mutex_unlock(&g_resources_mtx); \
     } while (0)
-
 
 #define MALLOC(p, size) \
     do { \
         p = malloc(size); \
         if (!p) { \
-            pr_err("[ERR][%s:%d] malloc() failed.", __FILE__, __LINE__); \
+            pr_err("malloc() failed."); \
             exit(EXIT_FAILURE); \
         } \
         memset(p, 0, size); \
+		printf("[%s:%d] malloc: %p (%zu bytes)\n", __FILE__, __LINE__, p, size); \
         TRACK_RESOURCE(p, RES_MEM); \
     } while (0)
 
 #define FREE(p) \
     do { \
-        if (p) { \
-            UNTRACK_RESOURCE(p); \
+		if (p) { \
+			printf("[%s:%d] free: %p\n", __FILE__, __LINE__, p); \
+			UNTRACK_RESOURCE(p); \
             free(p); \
             p = NULL; \
         } \

@@ -1,7 +1,46 @@
 #include "transaction.h"
 
 static FILE *txn_file = NULL;
-static pthread_mutex_t txn_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t txn_mutex;
+
+void init_txn()
+{
+	if (pthread_mutex_init(&txn_mutex, NULL) != 0) {
+        pr_err("pthread_mutex_init() failed.");
+        exit(EXIT_FAILURE);
+    }
+	txn_file = fopen("./transactions/txn_1.csv", "a");
+	if (!txn_file) {
+		pr_err("fopen() failed.");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void destroy_txn()
+{
+	pthread_mutex_lock(&txn_mutex);
+	if (txn_file) { 
+		fclose(txn_file);
+		txn_file = NULL;
+	}
+	pthread_mutex_unlock(&txn_mutex);
+	pthread_mutex_destroy(&txn_mutex);
+}
+
+transaction_t *create_txn(const char *date, const char *time, const char *market,
+					  const char *side, double price, double volume)
+{
+	transaction_t *txn;
+	MALLOC(txn, sizeof(transaction_t));
+	strcpy(txn->date, date);
+	strcpy(txn->time, time);
+	strcpy(txn->code, market);
+	strcpy(txn->side, side);
+	txn->price = price;
+	txn->volume = volume;
+
+	return txn;
+}
 
 void rotate_txn_file()
 {
@@ -40,16 +79,6 @@ void save_transaction(const char *date, const char *time, const char *code,
 
     rotate_txn_file();
 
-    if (!txn_file) {
-		txn_file = fopen("./transactions/txn_1.csv", "a");
-		if (!txn_file) {
-			LOG_ERR("fopen() failed.");
-			pr_err("fopen() failed.");
-			pthread_mutex_unlock(&txn_mutex);
-			return;
-		}
-    }
-
     fprintf(txn_file, "%s,%s,%s,%s,%.2f,%.6f\n", date, time, code, side,
 			price, volume);
     fflush(txn_file);			// send the buffer to kernel
@@ -62,19 +91,9 @@ void save_txn_task(void *arg)
 {
 	pthread_mutex_lock(&txn_mutex);
 
-	Transaction *txn = (Transaction *)arg;
+	transaction_t *txn = (transaction_t *)arg;
 
     rotate_txn_file();
-
-    if (!txn_file) {
-        txn_file = fopen("./transactions/txn_1.csv", "a");
-		if (!txn_file) {
-			LOG_ERR("fopen() failed.");
-			pr_err("fopen() failed.");
-			pthread_mutex_unlock(&txn_mutex);
-			return;
-		}
-    }
 
     fprintf(txn_file, "%s,%s,%s,%s,%.2f,%.6f\n", txn->date, txn->time,
 			txn->code, txn->side, txn->price, txn->volume);
@@ -83,16 +102,5 @@ void save_txn_task(void *arg)
 
 	pthread_mutex_unlock(&txn_mutex);
 
-	free(arg);
-}
-
-void terminate_txn()
-{
-	pthread_mutex_lock(&txn_mutex);
-	if (txn_file) { 
-		fclose(txn_file);
-		txn_file = NULL;
-	}
-	pthread_mutex_unlock(&txn_mutex);
-	pthread_mutex_destroy(&txn_mutex);
+	FREE(arg);
 }

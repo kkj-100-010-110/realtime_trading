@@ -1,12 +1,22 @@
 #include "thread_queue.h"
 
-static TaskQueue *tq = NULL;
+static task_queue_t *tq = NULL;
 static pthread_t *threads = NULL;
 
-void thread_queue_init()
+void init_thread_queue()
 {
-	MALLOC(tq, sizeof(TaskQueue));
-	MALLOC(tq->queue, sizeof(Task) * MAX_QUEUE_SIZE);
+	tq = (task_queue_t *)malloc(sizeof(task_queue_t));
+	if (!tq) {
+		pr_err("malloc() failed.");
+		exit(EXIT_FAILURE);
+	}
+
+	tq->queue = (task_t *)malloc(sizeof(task_t) * MAX_QUEUE_SIZE);
+	if (!tq->queue) {
+		pr_err("malloc() failed.");
+		exit(EXIT_FAILURE);
+	}
+
 	tq->front = 0;
 	tq->rear = 0;
 	tq->count = 0;
@@ -16,13 +26,17 @@ void thread_queue_init()
 	tq->shutdown = false;
 
 	// thread pool
-	MALLOC(threads, sizeof(pthread_t) * MAX_CPU);
+	threads = malloc(sizeof(pthread_t) * MAX_CPU);
+	if (!threads) {
+		pr_err("malloc() failed.");
+		exit(EXIT_FAILURE);
+	}
 	for (int i = 0; i < MAX_CPU; i+=1) {
 		pthread_create(&threads[i], NULL, worker_thread, NULL);
 	}
 }
 
-void thread_queue_destroy()
+void destroy_thread_queue()
 {
 	if (!tq) {
 		return;
@@ -30,24 +44,26 @@ void thread_queue_destroy()
 	pthread_mutex_lock(&tq->lock);
 	tq->shutdown = true;
 	pthread_cond_broadcast(&tq->not_empty);
+	pthread_cond_broadcast(&tq->not_full);
 	pthread_mutex_unlock(&tq->lock);
 
 	while (tq->count > 0) {
-        Task t;
+        task_t t;
         dequeue_task(&t);
         if (t.task_function == process_retry_task) {
-            free(t.arg);  // RetryTask 메모리 해제
+            free(t.arg);  // release retry_task_t
         }
     }
 
 	for (int i = 0; i < MAX_CPU; i+=1) {
 		pthread_join(threads[i], NULL);
 	}
-	free(threads);
+
 	pthread_mutex_destroy(&tq->lock);
 	pthread_cond_destroy(&tq->not_empty);
 	pthread_cond_destroy(&tq->not_full);
 	free(tq->queue);
+	free(threads);
 	free(tq);
 }
 
@@ -75,9 +91,9 @@ bool enqueue_task(void (*task_function)(void *), void *arg)
 }
 
 /*
-   from dequeue_task(Task *t), if t is "Task *", it should take deep copy
+   from dequeue_task(task_t *t), if t is "task_t *", it should take deep copy
  */
-//void task_deep_copy_txn(Task *dest, const Task *src) {
+//void task_deep_copy_txn(task_t *dest, const task_t *src) {
 //    dest->func = src->func;
 //    if (src->arg != NULL) {
 //        dest->arg = malloc(sizeof(Transaction));
@@ -87,7 +103,7 @@ bool enqueue_task(void (*task_function)(void *), void *arg)
 //    }
 //}
 
-bool dequeue_task(Task *t)
+bool dequeue_task(task_t *t)
 {
 	pthread_mutex_lock(&tq->lock);
 
@@ -111,7 +127,7 @@ bool dequeue_task(Task *t)
 void *worker_thread(void *arg)
 {
 	while (1) {
-		Task t;
+		task_t t;
 		if (!dequeue_task(&t)) {
 			break;
 		}
@@ -122,7 +138,8 @@ void *worker_thread(void *arg)
 
 void enqueue_retry_task(const char *uuid, int initial_backoff_ms)
 {
-    RetryTask *task = malloc(sizeof(RetryTask));
+    retry_task_t *task;
+	MALLOC(task, sizeof(retry_task_t));
     strncpy(task->uuid, uuid, sizeof(task->uuid));
     task->retry_count = 0;
     task->next_retry_time = time(NULL) + (initial_backoff_ms / 1000);
@@ -133,7 +150,7 @@ void enqueue_retry_task(const char *uuid, int initial_backoff_ms)
 
 void process_retry_task(void *arg)
 {
-	RetryTask *task = (RetryTask *)arg;
+	retry_task_t *task = (retry_task_t *)arg;
 	time_t now = time(NULL);
 
 	// if it's not the retry time, push it into a queue again
@@ -153,11 +170,12 @@ void process_retry_task(void *arg)
 			enqueue_task(process_retry_task, task);
 		} else { // has all retries done but it failed. 
 			LOG_ERR("Max retries exceeded for order %s", task->uuid);
-			free(task);
+			pr_err("Max retries exceeded for order %s", task->uuid);
+			FREE(arg);
 		}
 	} else { // COMPLETED
 		remove_order(task->uuid);
-		free(task);
+		FREE(arg);
 	}
 }
 

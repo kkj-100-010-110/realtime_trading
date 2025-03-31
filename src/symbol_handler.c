@@ -1,15 +1,15 @@
 #include "symbol_handler.h"
 
-SymTicker *tickers = NULL;
-SymOrderbook *orderbooks = NULL;
+sym_ticker_t *g_tickers = NULL;
+sym_orderbook_t *g_orderbooks = NULL;
 
-const char *codes[SYM_COUNT] = {
+const char *g_codes[SYM_COUNT] = {
 	"KRW-XRP",
     "KRW-ADA",
     "KRW-DOGE"
 };
 
-const char *symbols[SYM_COUNT] = {
+const char *g_symbols[SYM_COUNT] = {
 	"XRP",
     "ADA",
     "DOGE"
@@ -18,7 +18,7 @@ const char *symbols[SYM_COUNT] = {
 int get_code_index(const char *market)
 {
 	for (int i = 0; i < SYM_COUNT; i+=1) {
-		if (strcmp(market, codes[i]) == 0)
+		if (strcmp(market, g_codes[i]) == 0)
 			return i;
 	}
 	return -1;
@@ -27,7 +27,7 @@ int get_code_index(const char *market)
 int get_symbol_index(const char *market)
 {
 	for (int i = 0; i < SYM_COUNT; i+=1) {
-		if (strcmp(market, symbols[i]) == 0)
+		if (strcmp(market, g_symbols[i]) == 0)
 			return i;
 	}
 	return -1;
@@ -35,14 +35,22 @@ int get_symbol_index(const char *market)
 
 void init_sym_ticker_orderbook_info()
 {
-	MALLOC(tickers, sizeof(SymTicker) * SYM_COUNT);
-	MALLOC(orderbooks, sizeof(SymOrderbook) * SYM_COUNT);
+	g_tickers = (sym_ticker_t *)malloc(sizeof(sym_ticker_t) * SYM_COUNT);
+	if (!g_tickers) {
+		pr_err("malloc() failed.");
+		exit(EXIT_FAILURE);
+	}
+	g_orderbooks =(sym_orderbook_t *)malloc(sizeof(sym_orderbook_t) * SYM_COUNT);
+	if (!g_orderbooks) {
+		pr_err("malloc() failed.");
+		exit(EXIT_FAILURE);
+	}
 }
 
 void destroy_sym_ticker_orderbook_info()
 {
-	if (tickers)
-		free(tickers);
-	if (orderbooks)
-		free(orderbooks);
+	if (g_tickers)
+		free(g_tickers);
+	if (g_orderbooks)
+		free(g_orderbooks);
 }

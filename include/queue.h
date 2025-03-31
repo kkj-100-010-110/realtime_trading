@@ -4,26 +4,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-typedef struct
-{
-	struct qnode *head;
-	struct qnode *tail;
+typedef struct queue_s {
+	struct qnode_s *head;
+	struct qnode_s *tail;
 	int size;
-} Queue;
+} queue_t;
 
-struct qnode
+struct qnode_s
 {
 	void *data;
-	struct qnode* next;
+	struct qnode_s* next;
 };
 
-Queue *qcreate(void);
-int qsize(Queue *q);
-void *qfront(Queue *q);
-void qpop(Queue *q);
-void qpush(Queue *q, void *d);
-void qclear(Queue **q);
-void qprint_i(Queue *q);
-void qprint_s(Queue *q);
+queue_t *qcreate(void);
+int qsize(queue_t *q);
+void *qfront(queue_t *q);
+void qpop(queue_t *q);
+void qpush(queue_t *q, void *d);
+void qclear(queue_t **q);
+void qprint_int(queue_t *q);
+void qprint_str(queue_t *q);
 
 #endif//_QUEUE_H_

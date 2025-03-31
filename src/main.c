@@ -1,70 +1,52 @@
 #include "common.h"
-
 #include "websocket.h"
+#include "curl_pool.h"
 #include "rest_api.h"
 #include "log.h"
 #include "thread_queue.h"
 #include "account_handler.h"
 #include "ui.h"
 
-//void clean_up() {
-//    ResourceNode* current = g_resources;
-//    while (current) {
-//        switch (current->type) {
-//            case RES_MEM:
-//                if (current->resource) {
-//                    free(current->resource);
-//                    current->resource = NULL;
-//                }
-//                break;
-//            case RES_LOG:
-//                terminate_log();
-//                break;
-//            // ... (다른 타입 처리)
-//        }
-//        ResourceNode* next = current->prev;
-//        free(current);
-//        current = next;
-//    }
-//    g_resources = NULL;
-//}
+resource_node_t* g_resources = NULL;
+pthread_mutex_t g_resources_mtx = PTHREAD_MUTEX_INITIALIZER;
+
 void load_env();
+void clean_up();
 
 int main(void)
 {
-	/* create log_file and start logging on it */
-	init_log();
-
-	/* setup env */
+	atexit(clean_up);
 	load_env();
 
-	/* setup extern variables */
-	set_json_config();
+	init_log();
+	TRACK_RESOURCE(NULL, RES_LOG);
+
+	init_txn();
+	TRACK_RESOURCE(NULL, RES_TXN);
+
+	init_json_config();
+	TRACK_RESOURCE(NULL, RES_JSON_CONFIG);
+
 	init_order_handler();
+	TRACK_RESOURCE(NULL, RES_ORDER_HANDLER);
+
 	init_sym_ticker_orderbook_info();
+	TRACK_RESOURCE(NULL, RES_SYM_INFO);
+
 	init_account();
+	TRACK_RESOURCE(NULL, RES_ACCOUNT);
 
-	/* libcurl init */
-	CURLcode res = curl_global_init(CURL_GLOBAL_ALL);
-    if (res != CURLE_OK) {
-        pr_err("curl_global_init() failed: %s", curl_easy_strerror(res));
-        return -1;
-    }
+	init_curl_pool();
+	TRACK_RESOURCE(NULL, RES_CURL);
 
-	/* init thread queue */
-	thread_queue_init();
+	init_thread_queue();
+	TRACK_RESOURCE(NULL, RES_THREAD_QUEUE);
 
-	/* init ui */
 	//init_ui();
+	//TRACK_RESOURCE(NULL, RES_UI);
 
-	/* websocket thread */
-
-	/* configure socket and connect */
-	init_socket();
-	connect_websocket();
-
-	/* Websocket thread run */
-	websocket_thread_run();
+	init_websocket();
+	TRACK_RESOURCE(NULL, RES_WEBSOCKET);
 
 	char command[10] = {0};
 	int market = -1;
@@ -99,7 +81,7 @@ int main(void)
 				//Order *o = make_order(codes[market_idx], order_cmd, price,
 				//		volume, NULL);
 				//enqueue_task(place_order_task, (void *)o);
-				print_order(orders->root);
+				print_order(g_orders->root);
 			}
 		} else if (strcmp(command, "c") == 0) {
 		} else if (strcmp(command, "s") == 0) {
@@ -107,9 +89,9 @@ int main(void)
 			// check if any orders are left
 
 			// cancel all orders.
-			CancelOption *co = create_cancel_option("all", NULL, NULL, NULL, 10,
-					NULL);
-			enqueue_task(cancel_by_bulk_task, (void *)co);
+			//cancel_option_t *co = create_cancel_option("all", NULL, NULL, NULL, 10,
+			//		NULL);
+			//enqueue_task(cancel_by_bulk_task, (void *)co);
 			// check all done.
 			printf("Quit\n");
 			break;
@@ -133,29 +115,7 @@ int main(void)
 	}
 #endif//UI_ON
 
-	/* websocket thread and context cleanup */
-	cleanup_websocket();
-
-	/* libcurl cleanup */
-	curl_global_cleanup();
-
-	/* terminate transaction */
-	terminate_txn();
-
-	/* thread queue terminate */
-	thread_queue_destroy();
-
-	/* clear extern variables */
-	clear_extern_json();
-	clear_account();
-	destroy_order_handler();
-	destroy_sym_ticker_orderbook_info();
-
-	/* clear ui */
-	//destroy_ui();
-
-	/* terminate logging */
-	terminate_log();
+	clean_up();
 
     return 0;
 }
@@ -181,4 +141,55 @@ void load_env()
 		}
 	}
 	fclose(file);
+}
+
+void clean_up()
+{
+	pthread_mutex_lock(&g_resources_mtx);
+	resource_node_t* current = g_resources;
+	while (current) {
+		switch (current->type) {
+			case RES_MEM:
+				if (current->resource) {
+					free(current->resource);
+					current->resource = NULL;
+				}
+				break;
+			case RES_LOG:
+				destroy_log();
+				break;
+			case RES_TXN:
+				destroy_txn();
+				break;
+			case RES_JSON_CONFIG:
+				destroy_json_config();
+				break;
+			case RES_ORDER_HANDLER:
+				destroy_order_handler();
+				break;
+			case RES_SYM_INFO:
+				destroy_sym_ticker_orderbook_info();
+				break;
+			case RES_ACCOUNT:
+				destroy_account();
+				break;
+			case RES_CURL:
+				destroy_curl_pool();
+				break;
+			case RES_THREAD_QUEUE:
+				destroy_thread_queue();
+				break;
+			case RES_UI:
+				destroy_ui();
+				break;
+			case RES_WEBSOCKET:
+				destroy_websocket();
+				break;
+		}
+		resource_node_t* next = current->next;
+		free(current);
+		current = next;
+	}
+	g_resources = NULL;
+	pthread_mutex_unlock(&g_resources_mtx);
 }

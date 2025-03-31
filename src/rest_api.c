@@ -17,50 +17,50 @@ void get_account_info_task(void *arg)
 
 void place_order_task(void *arg)
 {
-	Order *o = (Order *)arg;
+	order_t *o = (order_t *)arg;
 	if (strcmp(o->side, "ask") == 0) {
 		place_sell_order(o->market, o->volume, o->price);
 	} else if (strcmp(o->side, "bid") == 0) {
 		place_buy_order(o->market, o->volume, o->price);
 	}
-	free(o);
+	FREE(arg);
 }
 
 void market_price_order_task(void *arg)
 {
-	Order *o = (Order *)arg;
+	order_t *o = (order_t *)arg;
 	market_order(o->market, o->side, o->volume);
-	free(o);
+	FREE(arg);
 }
 
 void get_order_status_task(void *arg)
 {
 	char *uuid = (char *)arg;
 	get_order_status(uuid);
-	free(uuid);
+	FREE(arg);
 }
 
 void get_closed_orders_status_task(void *arg)
 {
-	OrderStatus *os = (OrderStatus *)arg;
-	get_closed_orders_status(os->market, closed_states, os->states_count,
+	order_status_t *os = (order_status_t *)arg;
+	get_closed_orders_status(os->market, g_closed_states, os->states_count,
 			os->start_time, os->end_time, os->limit, os->order_by);
-	free(os);
+	FREE(arg);
 }
 
 void cancel_order_task(void *arg)
 {
 	char *uuid = (char *)arg;
 	cancel_order(uuid);
-	free(uuid);
+	FREE(arg);
 }
 
 void cancel_by_bulk_task(void *arg)
 {
-	CancelOption *c = (CancelOption *)arg;
+	cancel_option_t *c = (cancel_option_t *)arg;
 	cancel_by_bulk(c->side, c->pairs, c->excluded_pairs, c->quote_currencies,
 			c->count, c->order_by);
-	free(c);
+	FREE(arg);
 }
 
 
@@ -105,7 +105,7 @@ void get_account_info()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
 	}
-	free(response);
+	FREE(response);
 }
 
 void place_order(const char *market, const char *side, double volume, double price)
@@ -157,7 +157,7 @@ void place_order(const char *market, const char *side, double volume, double pri
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
 	}
-	free(response);
+	FREE(response);
 }
 
 void place_buy_order(const char *market, double volume, double price)
@@ -229,7 +229,7 @@ void market_order(const char *market, const char *side, double volume)
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
 	}
-	free(response);
+	FREE(response);
 }
 
 void cancel_order(const char *uuid)
@@ -276,7 +276,7 @@ void cancel_order(const char *uuid)
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
 	}
-	free(response);
+	FREE(response);
 }
 
 void get_order_status(const char *uuid)
@@ -319,7 +319,7 @@ void get_order_status(const char *uuid)
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
     }
-	free(response);
+	FREE(response);
 }
 
 int check_order_status(const char *uuid)
@@ -378,7 +378,7 @@ int check_order_status(const char *uuid)
 		curl_easy_cleanup(curl);
 		curl_slist_free_all(headers);
 	}
-	free(response);
+	FREE(response);
 	return COMPLETED;
 }
 
@@ -445,7 +445,7 @@ void get_open_orders_status(const char *market, const char **states,
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
     }
-    free(response);
+	FREE(response);
 }
 
 void get_closed_orders_status(const char *market, const char **states,
@@ -521,7 +521,7 @@ void get_closed_orders_status(const char *market, const char **states,
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
     }
-    free(response);
+    FREE(response);
 }
 
 void cancel_by_bulk(const char *cancel_side, const char *pairs,
@@ -606,5 +606,5 @@ void cancel_by_bulk(const char *cancel_side, const char *pairs,
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
     }
-    free(response);
+    FREE(response);
 }

@@ -1,36 +1,36 @@
 #include "json_handler.h"
 
-char *ticker_json = NULL;
-char *orderbook_json = NULL;
-char *ticker_orderbook_json = NULL;
-char *ticker_orderbook_trade = NULL;
+char *g_ticker_json = NULL;
+char *g_orderbook_json = NULL;
+char *g_ticker_orderbook_json = NULL;
+char *g_ticker_orderbook_trade = NULL;
 
-void clear_extern_json()
+void destroy_json_config()
 {
-	if (ticker_json) {
-		free(ticker_json);
-		ticker_json = NULL;
+	if (g_ticker_json) {
+		free(g_ticker_json);
+		g_ticker_json = NULL;
 	}
-	if (orderbook_json) {
-		free(orderbook_json);
-		orderbook_json = NULL;
+	if (g_orderbook_json) {
+		free(g_orderbook_json);
+		g_orderbook_json = NULL;
 	}
-	if (ticker_orderbook_json) {
-		free(ticker_orderbook_json);
-		ticker_orderbook_json = NULL;
+	if (g_ticker_orderbook_json) {
+		free(g_ticker_orderbook_json);
+		g_ticker_orderbook_json = NULL;
 	}
-	if (ticker_orderbook_trade) {
-		free(ticker_orderbook_trade);
-		ticker_orderbook_trade = NULL;
+	if (g_ticker_orderbook_trade) {
+		free(g_ticker_orderbook_trade);
+		g_ticker_orderbook_trade = NULL;
 	}
 }
 
-bool set_json_config()
+void init_json_config()
 {
 	FILE *file = fopen("./config/markets.json", "r");
 	if (!file) {
 		pr_err("fopen() failed.");
-		return false;
+		exit(EXIT_FAILURE);
 	}
 	fseek(file, 0, SEEK_END);
 	long length = ftell(file);
@@ -40,7 +40,7 @@ bool set_json_config()
 	if (!buffer) {
 		pr_err("malloc() failed.");
 		fclose(file);
-		return false;
+		exit(EXIT_FAILURE);
 	}
 
 	size_t read_size = fread(buffer, 1, length, file);
@@ -48,7 +48,7 @@ bool set_json_config()
 	if (read_size != length) {
 		pr_err("fread() failed.");
 		free(buffer);
-		return false;
+		exit(EXIT_FAILURE);
 	}
 	buffer[length] = '\0';
 
@@ -58,14 +58,14 @@ bool set_json_config()
 	free(buffer);
 	if (!root) {
 		pr_err("json_loads() failed. %s", error.text);
-		return false;
+		exit(EXIT_FAILURE);
 	}
 
 	json_t *markets = json_object_get(root, "markets");
 	if (!json_is_array(markets)) {
 		pr_err("json_is_array() failed.");
 		json_decref(root);
-		return false;
+		exit(EXIT_FAILURE);
 	}
 	json_incref(markets);  // Increase ref count since we're using it multiple times
 
@@ -108,15 +108,14 @@ bool set_json_config()
 	json_incref(markets);
 
 	// Convert JSON objects to strings
-	ticker_json = json_dumps(ticker_request, JSON_COMPACT);
-	orderbook_json = json_dumps(orderbook_request, JSON_COMPACT);
-	ticker_orderbook_json = json_dumps(ticker_orderbook_request, JSON_COMPACT);
-	ticker_orderbook_trade = json_dumps(ticker_orderbook_trade_request, JSON_COMPACT);
+	g_ticker_json = json_dumps(ticker_request, JSON_COMPACT);
+	g_orderbook_json = json_dumps(orderbook_request, JSON_COMPACT);
+	g_ticker_orderbook_json = json_dumps(ticker_orderbook_request, JSON_COMPACT);
+	g_ticker_orderbook_trade = json_dumps(ticker_orderbook_trade_request, JSON_COMPACT);
 
-	if (!ticker_json || !orderbook_json || !ticker_orderbook_json || !ticker_orderbook_trade) {
-		pr_err("json_dumps() failed");
-		clear_extern_json(); // Free allocated strings
-		return false;
+	if (!g_ticker_json || !g_orderbook_json || !g_ticker_orderbook_json || !g_ticker_orderbook_trade) {
+		pr_err("json_dumps() failed.");
+		exit(EXIT_FAILURE);
 	}
 
 	// Cleanup JSON objects
@@ -126,7 +125,6 @@ bool set_json_config()
 	json_decref(ticker_orderbook_trade_request);
 	json_decref(markets);
 	json_decref(root);
-	return true;
 }
 
 /* WEBSOCKET RESPONSE JSON DATA PARSE BEGIN */
@@ -171,21 +169,21 @@ void parse_ticker_json(json_t *root)
 		pr_err("unknown code: %s", code);
 		return;
 	}
-	tickers[idx].code = codes[idx];
-	tickers[idx].trade_price = json_real_value(json_object_get(root, "trade_price"));
-	strcpy(tickers[idx].change, json_string_value(json_object_get(root, "change")));
-	tickers[idx].signed_change_price = json_real_value(json_object_get(root, "signed_change_price"));
-	tickers[idx].signed_change_rate = json_real_value(json_object_get(root, "signed_change_rate"));
-	tickers[idx].high_price = json_real_value(json_object_get(root, "high_price"));
-	tickers[idx].low_price = json_real_value(json_object_get(root, "low_price"));
-    tickers[idx].opening_price = json_real_value(json_object_get(root, "opening_price"));
-    tickers[idx].prev_closing_price = json_real_value(json_object_get(root, "prev_closing_price"));
-    tickers[idx].trade_volume = json_real_value(json_object_get(root, "trade_volume"));
-    tickers[idx].acc_trade_volume_24h = json_real_value(json_object_get(root, "acc_trade_volume_24h"));
-    tickers[idx].acc_trade_price_24h = json_real_value(json_object_get(root, "acc_trade_price_24h"));
-	tickers[idx].highest_52_week_price = json_real_value(json_object_get(root, "highest_52_week_price"));
-	tickers[idx].lowest_52_week_price = json_real_value(json_object_get(root, "lowest_52_week_price"));
-	strcpy(tickers[idx].market_state, json_string_value(json_object_get(root, "market_state")));
+	g_tickers[idx].code = g_codes[idx];
+	g_tickers[idx].trade_price = json_real_value(json_object_get(root, "trade_price"));
+	strcpy(g_tickers[idx].change, json_string_value(json_object_get(root, "change")));
+	g_tickers[idx].signed_change_price = json_real_value(json_object_get(root, "signed_change_price"));
+	g_tickers[idx].signed_change_rate = json_real_value(json_object_get(root, "signed_change_rate"));
+	g_tickers[idx].high_price = json_real_value(json_object_get(root, "high_price"));
+	g_tickers[idx].low_price = json_real_value(json_object_get(root, "low_price"));
+    g_tickers[idx].opening_price = json_real_value(json_object_get(root, "opening_price"));
+    g_tickers[idx].prev_closing_price = json_real_value(json_object_get(root, "prev_closing_price"));
+    g_tickers[idx].trade_volume = json_real_value(json_object_get(root, "trade_volume"));
+    g_tickers[idx].acc_trade_volume_24h = json_real_value(json_object_get(root, "acc_trade_volume_24h"));
+    g_tickers[idx].acc_trade_price_24h = json_real_value(json_object_get(root, "acc_trade_price_24h"));
+	g_tickers[idx].highest_52_week_price = json_real_value(json_object_get(root, "highest_52_week_price"));
+	g_tickers[idx].lowest_52_week_price = json_real_value(json_object_get(root, "lowest_52_week_price"));
+	strcpy(g_tickers[idx].market_state, json_string_value(json_object_get(root, "market_state")));
 }
 
 void parse_orderbook_json(json_t *root)
@@ -198,21 +196,21 @@ void parse_orderbook_json(json_t *root)
 		pr_err("unknown code: %s", code);
 		return;
 	}
-	orderbooks[idx].code = codes[idx];
-    orderbooks[idx].timestamp = json_integer_value(json_object_get(root, "timestamp"));
-    orderbooks[idx].total_bid_size = json_real_value(json_object_get(root, "total_bid_size"));
-    orderbooks[idx].total_ask_size = json_real_value(json_object_get(root, "total_ask_size"));
+	g_orderbooks[idx].code = g_codes[idx];
+    g_orderbooks[idx].timestamp = json_integer_value(json_object_get(root, "timestamp"));
+    g_orderbooks[idx].total_bid_size = json_real_value(json_object_get(root, "total_bid_size"));
+    g_orderbooks[idx].total_ask_size = json_real_value(json_object_get(root, "total_ask_size"));
 
     // orderbook units
     json_t *orderbook_units = json_object_get(root, "orderbook_units");
 	if (json_is_array(orderbook_units)) {
 		json_t *first_unit = json_array_get(orderbook_units, 0);
-		orderbooks[idx].best_bid_price = json_real_value(json_object_get(first_unit, "bid_price"));
-		orderbooks[idx].best_bid_size = json_real_value(json_object_get(first_unit, "bid_size"));
-		orderbooks[idx].best_ask_price = json_real_value(json_object_get(first_unit, "ask_price"));
-		orderbooks[idx].best_ask_size = json_real_value(json_object_get(first_unit, "ask_size"));
-		orderbooks[idx].spread = orderbooks[idx].best_ask_price - orderbooks[idx].best_bid_price;
-		orderbooks[idx].bid_ask_ratio = orderbooks[idx].best_bid_size / orderbooks[idx].best_ask_size;
+		g_orderbooks[idx].best_bid_price = json_real_value(json_object_get(first_unit, "bid_price"));
+		g_orderbooks[idx].best_bid_size = json_real_value(json_object_get(first_unit, "bid_size"));
+		g_orderbooks[idx].best_ask_price = json_real_value(json_object_get(first_unit, "ask_price"));
+		g_orderbooks[idx].best_ask_size = json_real_value(json_object_get(first_unit, "ask_size"));
+		g_orderbooks[idx].spread = g_orderbooks[idx].best_ask_price - g_orderbooks[idx].best_bid_price;
+		g_orderbooks[idx].bid_ask_ratio = g_orderbooks[idx].best_bid_size / g_orderbooks[idx].best_ask_size;
 	}
 
 #if PRINT
@@ -246,8 +244,7 @@ void parse_trade_json(json_t *root)
 		size_t index;
 		json_t *value;
 		json_array_foreach(root, index, value) {
-			Transaction *txn;
-			MALLOC(txn, sizeof(Transaction));
+			transaction_t *txn;
 			const char *trade_date = json_string_value(json_object_get(root, "trade_date"));
 			const char *trade_time = json_string_value(json_object_get(root, "trade_date"));
 			const char *code = json_string_value(json_object_get(root, "code"));
@@ -255,17 +252,15 @@ void parse_trade_json(json_t *root)
 			double trade_price = json_real_value(json_object_get(root, "trade_price"));
 			double trade_volume = json_real_value(json_object_get(root, "trade_volume"));
 			long trade_timestamp = json_integer_value(json_object_get(root, "trade_timestamp"));
-			strcpy(txn->date, trade_date);
-			strcpy(txn->time, trade_time);
-			strcpy(txn->code, code);
-			strcpy(txn->side, ask_bid);
-			txn->price = trade_price;
-			txn->volume = trade_volume;
+			txn = create_txn(trade_date, trade_time, code, ask_bid, trade_price,
+					trade_volume);
+
+			// account update
 
 			pr_trade("%s, %s Code=%s, Side=%s, Price=%.8f, Volume=%.8f",
 					trade_date, trade_time, code, trade_price, trade_volume, ask_bid);
 
-			OrderStatus *os = create_order_status(code, 1, trade_timestamp, 0,
+			order_status_t *os = create_order_status(code, 1, trade_timestamp, 0,
 					0, 5, NULL);
 			enqueue_task(get_closed_orders_status_task, (void *)os); 
 			enqueue_task(save_txn_task, (void *)txn);
@@ -305,11 +300,11 @@ void parse_account_json(const char *data)
 			const char *b = json_string_value(balance);
 			const char *l = json_string_value(locked);
 			int idx = get_index(c);
-			strcpy(account[idx].currency, c);
-			account[idx].balance = atof(b);
-			account[idx].locked = atof(l);
+			strcpy(g_account[idx].currency, c);
+			g_account[idx].balance = atof(b);
+			g_account[idx].locked = atof(l);
 			pr_out("Currency: %s | Balance: %.2f | Locked: %.2f\n",
-					account[idx].currency, account[idx].balance, account[idx].locked);
+					g_account[idx].currency, g_account[idx].balance, g_account[idx].locked);
 		}
 	}
 	json_decref(root);
@@ -517,7 +512,7 @@ void parse_cancel_by_bulk_response(const char *data)
 				remove_order(uuid);
 
 				//test
-				print_order(orders->root);
+				print_order(g_orders->root);
             }
         }
     }

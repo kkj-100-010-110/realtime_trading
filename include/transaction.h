@@ -13,12 +13,15 @@ typedef struct {
 	char side[4];
 	double price;
 	double volume;
-} Transaction;
+} transaction_t;
 
+void init_txn();
+void destroy_txn();
+transaction_t *create_txn(const char *date, const char *time, const char *market,
+					  const char *side, double price, double volume);
 void rotate_txn_file();
 void save_transaction(const char *date, const char *time, const char *market,
 					  const char *side, double price, double volume);
 void save_txn_task(void *arg);
-void terminate_txn();
 
 #endif//_TRANSACTION_H

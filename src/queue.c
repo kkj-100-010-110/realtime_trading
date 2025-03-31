@@ -1,9 +1,8 @@
-//#include "queue.h"
-#include "../include/queue.h"
+#include "queue.h"
 
-Queue *qcreate(void)
+queue_t *qcreate(void)
 {
-	Queue *new_q = (Queue*)malloc(sizeof(Queue));
+	queue_t *new_q = (queue_t*)malloc(sizeof(queue_t));
 	if (!new_q) {
 		fprintf(stderr, "malloc failed in qcreate()\n");
 		return NULL;
@@ -16,44 +15,44 @@ Queue *qcreate(void)
 	return new_q;
 }
 
-int qsize(Queue *q)
+int qsize(queue_t *q)
 {
 	if (!q) {
-		fprintf(stderr, "Error: Queue is null in qsize()\n");
+		fprintf(stderr, "Error: queue_t is null in qsize()\n");
 		return -1;
 	}
 	return q->size;
 }
 
-void *qfront(Queue *q)
+void *qfront(queue_t *q)
 {
 	if (!q) {
-		fprintf(stderr, "Error: Queue is null in qfront()\n");
+		fprintf(stderr, "Error: queue_t is null in qfront()\n");
 		return NULL;
 	}
 	return q->head->data;
 }
 
-void qpop(Queue *q)
+void qpop(queue_t *q)
 {
 	if (!q) {
-		fprintf(stderr, "Error: Queue is null in qpop()\n");
+		fprintf(stderr, "Error: queue_t is null in qpop()\n");
 		return;
 	}
 	if (!q->head) {
-		fprintf(stderr, "Error: Queue is empty in qpop()\n");
+		fprintf(stderr, "Error: queue_t is empty in qpop()\n");
 		return;
 	}
-	struct qnode *tmp = q->head;
+	struct qnode_s *tmp = q->head;
 	q->head = q->head->next;
 	q->size--;
 	free(tmp);
 	tmp = NULL;
 }
 
-void qpush(Queue *q, void *d)
+void qpush(queue_t *q, void *d)
 {
-	struct qnode *new_q = (struct qnode*)malloc(sizeof(struct qnode));
+	struct qnode_s *new_q = (struct qnode_s*)malloc(sizeof(struct qnode_s));
 	if (!new_q) {
 		fprintf(stderr, "malloc failed in qpush()\n");
 		return;
@@ -70,7 +69,7 @@ void qpush(Queue *q, void *d)
 	q->size++;
 }
 
-void qclear(Queue **q)
+void qclear(queue_t **q)
 {
 	if (!*q) {
 		printf("empty\n");
@@ -82,13 +81,13 @@ void qclear(Queue **q)
 	*q = NULL;
 }
 
-void qprint_i(Queue *q)
+void qprint_int(queue_t *q)
 {
 	if (!q) {
 		fprintf(stderr, "error: queue is null\n");
 		return ;
 	}
-	struct qnode *tmp = q->head;
+	struct qnode_s *tmp = q->head;
 	while (tmp)
 	{
 		printf("%d ", *(int*)tmp->data);
@@ -96,13 +95,13 @@ void qprint_i(Queue *q)
 	}
 }
 
-void qprint_s(Queue *q)
+void qprint_str(queue_t *q)
 {
 	if (!q) {
 		fprintf(stderr, "error: queue is null\n");
 		return ;
 	}
-	struct qnode *tmp = q->head;
+	struct qnode_s *tmp = q->head;
 	while (tmp)
 	{
 		printf("%s\n", (char*)tmp->data);

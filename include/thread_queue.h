@@ -13,10 +13,10 @@
 typedef struct {
 	void (*task_function)(void *);
 	void *arg;
-} Task;
+} task_t;
 
 typedef struct {
-	Task *queue;
+	task_t *queue;
 	int front;
 	int rear;
 	int count;
@@ -24,25 +24,24 @@ typedef struct {
 	pthread_cond_t not_empty;
 	pthread_cond_t not_full;
 	bool shutdown;
-} TaskQueue;
+} task_queue_t;
 
-typedef enum {
+typedef enum retry_state_e {
 	FAILED = -1,
 	PENDING = 0,
 	COMPLETED = 1
-} RetryState;
+} retry_state_t;
 
 typedef struct {
 	char uuid[37];
 	int retry_count;
 	time_t next_retry_time; // time(timestamp)
-} RetryTask;
+} retry_task_t;
 
-
-void thread_queue_init();
-void thread_queue_destroy();
+void init_thread_queue();
+void destroy_thread_queue();
 bool enqueue_task(void (*task_function)(void *), void *arg);
-bool dequeue_task(Task *t);
+bool dequeue_task(task_t *t);
 void *worker_thread(void *arg);
 
 /* RETRY */

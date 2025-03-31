@@ -6,12 +6,13 @@
 
 #include <libwebsockets.h> // lws
 
-extern atomic_bool ws_running;
+extern atomic_bool g_ws_running;
 
 /* WEBSOCKET */
-void init_socket();
+void init_websocket();
+void set_socket();
 void connect_websocket();
-void cleanup_websocket();
+void destroy_websocket();
 void *websocket_thread(void *arg);
 void websocket_thread_run();
 

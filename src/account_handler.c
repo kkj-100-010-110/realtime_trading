@@ -1,6 +1,6 @@
 #include "account_handler.h"
 
-Account *account = NULL;
+account_t *g_account = NULL;
 
 static const char *currencies[COUNT] = {
 	"KRW",
@@ -20,12 +20,16 @@ int get_index(const char *currency)
 
 void init_account()
 {
-	MALLOC(account, sizeof(Account) * COUNT);
+	g_account = (account_t *)malloc(sizeof(account_t) * COUNT);
+	if (!g_account) {
+		pr_err("malloc() failed.");
+		exit(EXIT_FAILURE);
+	}
 }
 
-void clear_account()
+void destroy_account()
 {
-	if (account) {
-		free(account);
+	if (g_account) {
+		free(g_account);
 	}
 }

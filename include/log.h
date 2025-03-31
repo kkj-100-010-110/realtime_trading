@@ -23,13 +23,13 @@
 typedef struct {
 	const char *fmt;
 	va_list args;
-} LogTaskArg;
+} log_task_arg_t;
 
 /* thread_queue task */
 void logging_task(void *arg);
 
 void init_log();
 void do_log(const char *fmt, ...);
-void terminate_log();
+void destroy_log();
 
 #endif//_LOG_H
