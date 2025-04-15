@@ -1,10 +1,4 @@
-#ifndef _UI_H
-#define _UI_H
-
-#include "common.h"
-#include "symbol_handler.h"
-
-#include <ncurses.h>
+#include "ui.h"
 
 void destroy_ui()
 {
@@ -233,7 +227,7 @@ static int menu_ui()
 				if (ok[0] == 'y') {
 					// send order rest api
 					order_t *o = make_order(g_codes[market_idx], order_cmd, price,
-							volume, NULL);
+							volume, NULL, NULL, NULL);
 					enqueue_task(place_order_task, (void *)o);
 					mvprintw(29, 87 + strlen(price_str) + strlen(volume_str), "Sent.");
                     refresh();
@@ -284,5 +278,3 @@ int update_ui()
 	refresh();
 	return 0;
 }
-
-#endif//_UI_H

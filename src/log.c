@@ -39,19 +39,6 @@ static void rotate_log_file()
 		}
 	}
 }
-
-static void logging(const char *fmt, va_list args)
-{
-	pthread_mutex_lock(&log_mutex);
-
-	rotate_log_file();
-
-	vfprintf(log_file, fmt, args);
-	fputc('\n', log_file);
-	fflush(log_file);
-
-	pthread_mutex_unlock(&log_mutex);
-}
 /* static variable & functions end */
 
 
@@ -86,9 +73,16 @@ void logging_task(void *arg)
 {
     log_task_arg_t *lta = (log_task_arg_t *)arg;
 
-    logging(lta->fmt, lta->args);
+	pthread_mutex_lock(&log_mutex);
 
-	va_end(lta->args);
+	rotate_log_file();
+
+	fprintf(log_file, "%s\n", lta->buffer);
+	fflush(log_file);
+
+	pthread_mutex_unlock(&log_mutex);
+
+	free(lta->buffer);
     free(lta);
 }
 
@@ -101,14 +95,20 @@ void do_log(const char *fmt, ...)
 		return;
 	}
 
-	lta->fmt = fmt;
 	va_list args;
 	va_start(args, fmt);
-	va_copy(lta->args, args);
+
+	if (vasprintf(&lta->buffer, fmt, args) == -1) {
+		va_end(args);
+		free(lta);
+		fprintf(log_file, "[ERR][%s:%d] vasprintf() failed.\n", __FILE__, __LINE__);
+		return;
+	}
+
 	va_end(args);
 
-	if (enqueue_task(logging_task, (void *)lta)) {
-		va_end(lta->args);
+	if (!enqueue_task(logging_task, (void *)lta)) {
+		free(lta->buffer);
 		free(lta);
 		fprintf(log_file, "[ERR][%s:%d] failed to push logging_task() to queue.\n",
 				__FILE__, __LINE__);

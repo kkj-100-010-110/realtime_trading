@@ -19,15 +19,17 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/account_handler.c \
        $(SRC_DIR)/json_handler.c \
        $(SRC_DIR)/rest_api.c \
-       $(SRC_DIR)/jwt.c \
+       $(SRC_DIR)/utils.c \
        $(SRC_DIR)/symbol_handler.c \
        $(SRC_DIR)/curl_pool.c \
+       $(SRC_DIR)/sig_handler.c \
+       $(SRC_DIR)/ui.c \
        $(SRC_DIR)/rb.c \
        $(SRC_DIR)/queue.c
 
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
-VALGRIND_FLAGS = --leak-check=full --show-leak-kinds=all -v
+VALGRIND_FLAGS = --track-origins=yes --leak-check=full --show-leak-kinds=all -v
 
 all		: $(NAME)
 
@@ -49,12 +51,14 @@ fclean	: clean
 re		: fclean all
 
 run_sh :
-	@for script in $(SCRIPT_DIR)/*.sh; do \
-		echo "Running $$script..."; \
-		bash $$script; \
-	done
+	@echo "Running watchdog..."
+	@bash $(SCRIPT_DIR)/watchdog.sh || true
+#	@for script in $(SCRIPT_DIR)/*.sh; do \
+#		echo "Running $$script..."; \
+#		bash $$script; \
+#	done
 
 valgrind:
-	  valgrind $(VALGRIND_FLAGS) ./server
+	  valgrind $(VALGRIND_FLAGS) ./program
 
 .PHONY	:	all clean fclean re valgrind run_sh

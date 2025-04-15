@@ -1,6 +1,7 @@
 #ifndef _LOG_H
 #define _LOG_H
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -11,7 +12,7 @@
 
 #include "thread_queue.h"
 
-#define LOG_ERR(fmt, ...) \
+#define MY_LOG_ERR(fmt, ...) \
 	do_log("[ERR][%s:%d] " fmt, __FILE__, __LINE__, ##__VA_ARGS__);
 
 #define LOG_REP(fmt, ...) \
@@ -21,8 +22,8 @@
 #define MAX_LOG_FILES 5
 
 typedef struct {
-	const char *fmt;
-	va_list args;
+	char *fmt;
+	char *buffer;
 } log_task_arg_t;
 
 /* thread_queue task */

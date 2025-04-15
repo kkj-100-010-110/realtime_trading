@@ -18,8 +18,12 @@
 
 /* SWITCH */
 #define UI_ON 0
+#define TEST_ON 1
 #define PRINT 0
-#define CHECK_TRACK 0
+
+/* UTILITY MACROS */
+#define IS_EMPTY_STR(str) (((str) == NULL) || ((str)[0] == '\0'))
+#define EMPTY_ARR(arr) ((arr)[0] == '\0')
 
 /* PRINT MACRO OPTIONS */
 #define INFO "\033[93m[INFO] \033[0m"
@@ -31,37 +35,37 @@
 
 #define pr_err(arg...) \
 	flockfile(stderr); \
-	fprintf(stderr, ERROR "[%s:%d] ", __FILE__, __LINE__, arg); \
+	fprintf(stderr, ERROR arg); \
 	fputc('\n', stderr); \
 	funlockfile(stderr);
 
 #define pr_out(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, INFO "[%s:%d] ", __FILE__, __LINE__, arg); \
+	fprintf(stdout, INFO arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_ok(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, OK "[%s:%d] ", __FILE__, __LINE__, arg); \
+	fprintf(stdout, OK arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_trade(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, TRADE "[%s:%d] ", __FILE__, __LINE__, arg); \
+	fprintf(stdout, TRADE arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_order(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, ORDER "[%s:%d] ", __FILE__, __LINE__, arg); \
+	fprintf(stdout, ORDER arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
 #define pr_cancel(arg...) \
 	flockfile(stdout); \
-	fprintf(stdout, CANCEL "[%s:%d] ", __FILE__, __LINE__, arg); \
+	fprintf(stdout, CANCEL arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
 
@@ -70,9 +74,11 @@
  * fucntions beginning with init_ & destroy_ do not use this macro            *
  * only for temporary objects									              *
  ******************************************************************************/
+
 typedef enum resource_type_e {
 	RES_MEM,
 	RES_LOG,
+	RES_SIG,
 	RES_TXN,
 	RES_JSON_CONFIG,
 	RES_ORDER_HANDLER,

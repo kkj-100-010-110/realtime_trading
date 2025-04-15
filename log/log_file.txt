@@ -1,6 +1,0 @@
-[2025/03/06 01:00:07:5784] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
-[2025/03/06 01:00:07:5788] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
-[2025/03/06 01:00:07:5789] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
-[2025/03/06 01:00:07:5809] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
-[2025/03/06 01:00:07:7970] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
-[2025/03/06 01:00:07:9149] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 43.203.78.133

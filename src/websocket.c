@@ -77,7 +77,7 @@ void set_socket()
 
     context = lws_create_context(&info);
     if (!context) {
-		LOG_ERR("lws_create_context() failed");
+		MY_LOG_ERR("lws_create_context() failed");
         lwsl_err("lws_create_context() failed\n");
 		exit(EXIT_FAILURE);
     }
@@ -99,7 +99,7 @@ void connect_websocket()
 
     wsi = lws_client_connect_via_info(&connect_info);
     if (!wsi) {
-		LOG_ERR("lws_client_connect_via_info() failed");
+		MY_LOG_ERR("lws_client_connect_via_info() failed");
         lwsl_err("lws_client_connect_via_info() failed\n");
 		destroy_websocket();
 		exit(EXIT_FAILURE);
@@ -132,7 +132,7 @@ void ticker_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_ticker_json, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}
@@ -142,7 +142,7 @@ void ticker_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_ticker_json, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}
@@ -158,7 +158,7 @@ void orderbook_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_orderbook_json, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}
@@ -168,7 +168,7 @@ void orderbook_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_orderbook_json, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}
@@ -184,7 +184,7 @@ void ticker_orderbook_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_ticker_orderbook_json, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}
@@ -194,7 +194,7 @@ void ticker_orderbook_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_ticker_orderbook_json, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}
@@ -210,7 +210,7 @@ void ticker_orderbook_trade_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_ticker_orderbook_trade, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}
@@ -220,7 +220,7 @@ void ticker_orderbook_trade_request(struct lws *wsi)
 		unsigned char *msg = &buf[LWS_PRE];
 		memcpy(msg, g_ticker_orderbook_trade, len);
 		if (lws_write(wsi, msg, len, LWS_WRITE_TEXT) < 0) {
-			LOG_ERR("lws_write() failed");
+			MY_LOG_ERR("lws_write() failed");
 			lwsl_err("lws_write() failed.\n");
 			pr_err("lws_write() failed.");
 		}

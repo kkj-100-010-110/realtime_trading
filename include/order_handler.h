@@ -11,6 +11,8 @@ typedef struct {
     double volume;
     double price;
     char side[8];
+	char ord_type[7];
+	char time_in_force[4];
     char status[16];
 } order_t;
 
@@ -46,7 +48,7 @@ extern atomic_bool g_orders_empty;
 
 /* creating structures to make it one portion of args and send it to thread queue */
 order_t *make_order(const char *market, const char *side, double price, double volume,
-		const char * status);
+		const char *ord_type, const char *time_in_force, const char *status);
 cancel_option_t *create_cancel_option(const char *side, const char *pairs,
 		const char *excluded_pairs, const char *quote_currencies, int count,
 		const char *order_by);
@@ -56,15 +58,14 @@ order_status_t *create_order_status(const char *market, size_t states_count,
 
 /* init extern variables */
 void init_order_handler();
-void insert_order(const char *uuid, const char *market, double volume,
-				  double price, const char *side, const char *status);
-void find_order(const char *uuid, order_t **o);
+void insert_order(const char *uuid, const char *market, double volume, double price,
+		const char *side, const char *ord_type, const char *status);
 void remove_order(const char *uuid);
 /* remove_order for ui */
 void ui_remove_order(int i);
 void update_order_status(const char *uuid, const char *status);
 void destroy_order_handler();
 /* print for test */
-void print_order(rb_node_t *root);
+void print_order();
 
 #endif//_ORDER_HANDLER_H

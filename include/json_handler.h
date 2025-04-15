@@ -29,7 +29,6 @@ void parse_trade_json(json_t *root);
 /* REST API RESPONSE JSON DATA PARSE */
 void parse_account_json(const char *data);
 void parse_place_order_response(const char *data);
-void parse_market_order_response(const char *data);
 void parse_cancel_order_response_json(const char *data);
 void parse_get_order_status(const char *data);
 void parse_get_open_orders_status(const char * data);

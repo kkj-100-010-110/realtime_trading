@@ -63,7 +63,7 @@ void rotate_txn_file()
 
         txn_file = fopen("./transactions/txn_1.csv", "w");
 		if (!txn_file) {
-			LOG_ERR("fopen() failed.");
+			MY_LOG_ERR("fopen() failed.");
 			pr_err("fopen() failed.");
 			pthread_mutex_unlock(&txn_mutex);
 			exit(EXIT_FAILURE);

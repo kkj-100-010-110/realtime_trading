@@ -136,6 +136,7 @@ void *worker_thread(void *arg)
 	return NULL;
 }
 
+/* RETRY LOGIC */
 void enqueue_retry_task(const char *uuid, int initial_backoff_ms)
 {
     retry_task_t *task;
@@ -169,7 +170,7 @@ void process_retry_task(void *arg)
 			task->next_retry_time = now + (backoff_ms / 1000);
 			enqueue_task(process_retry_task, task);
 		} else { // has all retries done but it failed. 
-			LOG_ERR("Max retries exceeded for order %s", task->uuid);
+			MY_LOG_ERR("Max retries exceeded for order %s", task->uuid);
 			pr_err("Max retries exceeded for order %s", task->uuid);
 			FREE(arg);
 		}
@@ -178,4 +179,3 @@ void process_retry_task(void *arg)
 		FREE(arg);
 	}
 }
-

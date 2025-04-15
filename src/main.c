@@ -2,108 +2,23 @@
 #include "websocket.h"
 #include "curl_pool.h"
 #include "rest_api.h"
-#include "log.h"
 #include "thread_queue.h"
 #include "account_handler.h"
+#include "sig_handler.h"
 #include "ui.h"
 
 resource_node_t* g_resources = NULL;
 pthread_mutex_t g_resources_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 void load_env();
+void set_up();
 void clean_up();
 
 int main(void)
 {
-	atexit(clean_up);
-	load_env();
+	set_up();
 
-	init_log();
-	TRACK_RESOURCE(NULL, RES_LOG);
-
-	init_txn();
-	TRACK_RESOURCE(NULL, RES_TXN);
-
-	init_json_config();
-	TRACK_RESOURCE(NULL, RES_JSON_CONFIG);
-
-	init_order_handler();
-	TRACK_RESOURCE(NULL, RES_ORDER_HANDLER);
-
-	init_sym_ticker_orderbook_info();
-	TRACK_RESOURCE(NULL, RES_SYM_INFO);
-
-	init_account();
-	TRACK_RESOURCE(NULL, RES_ACCOUNT);
-
-	init_curl_pool();
-	TRACK_RESOURCE(NULL, RES_CURL);
-
-	init_thread_queue();
-	TRACK_RESOURCE(NULL, RES_THREAD_QUEUE);
-
-	//init_ui();
-	//TRACK_RESOURCE(NULL, RES_UI);
-
-	init_websocket();
-	TRACK_RESOURCE(NULL, RES_WEBSOCKET);
-
-	char command[10] = {0};
-	int market = -1;
-	char type[10] = {0};
-	char price[20] = {0};
-	char volume[20] = {0};
-	char ok[10] = {0};
-	while (1) {
-		printf("Update balance(u)\n"
-			   "Make order(m)\n"
-			   "Cancel order(c)\n"
-			   "Show orders(s)\n"
-			   "Quit(q)\n"
-			   ">>> ");
-		scanf("%s", command);
-		if (strcmp(command, "u") == 0) {
-			enqueue_task(get_account_info_task, NULL);
-		} else if (strcmp(command, "m") == 0) {
-			printf("Market 1-XRP, 2-ADA, 3-DOGE >>> ");
-			scanf("%d", &market);
-			printf("Bid(b)/Ask(a) >>> ");
-			scanf("%s", type);
-			if (strcmp(type, "a") == 0 || strcmp(type, "b") == 0) {
-				strcpy(type, type[0] == 'a' ? "ask" : "bid");
-				printf("Price: ");
-				scanf("%s", price);
-				printf("Volume: ");
-				scanf("%s", volume);
-				printf("Send? ");
-				scanf("%s", ok);
-				// order rest api
-				//Order *o = make_order(codes[market_idx], order_cmd, price,
-				//		volume, NULL);
-				//enqueue_task(place_order_task, (void *)o);
-				print_order(g_orders->root);
-			}
-		} else if (strcmp(command, "c") == 0) {
-		} else if (strcmp(command, "s") == 0) {
-		} else if (strcmp(command, "q") == 0) {
-			// check if any orders are left
-
-			// cancel all orders.
-			//cancel_option_t *co = create_cancel_option("all", NULL, NULL, NULL, 10,
-			//		NULL);
-			//enqueue_task(cancel_by_bulk_task, (void *)co);
-			// check all done.
-			printf("Quit\n");
-			break;
-		} else {
-			printf("Wrong command\n");
-		}
-		command[0] = '\0';
-		type[0] = '\0';
-		price[0] = '\0';
-		volume[0] = '\0';
-		ok[0] = '\0';
-	}
+	//test();
 
 #ifndef UI_ON
 	while (1) {
@@ -143,6 +58,46 @@ void load_env()
 	fclose(file);
 }
 
+void set_up()
+{
+	atexit(clean_up);
+
+	load_env();
+
+	init_log();
+	TRACK_RESOURCE(NULL, RES_LOG);
+
+	init_sig_handler();
+	TRACK_RESOURCE(NULL, RES_SIG);
+
+	init_txn();
+	TRACK_RESOURCE(NULL, RES_TXN);
+
+	init_json_config();
+	TRACK_RESOURCE(NULL, RES_JSON_CONFIG);
+
+	init_order_handler();
+	TRACK_RESOURCE(NULL, RES_ORDER_HANDLER);
+
+	init_sym_ticker_orderbook_info();
+	TRACK_RESOURCE(NULL, RES_SYM_INFO);
+
+	init_account();
+	TRACK_RESOURCE(NULL, RES_ACCOUNT);
+
+	init_curl_pool();
+	TRACK_RESOURCE(NULL, RES_CURL);
+
+	init_thread_queue();
+	TRACK_RESOURCE(NULL, RES_THREAD_QUEUE);
+
+	//init_ui();
+	//TRACK_RESOURCE(NULL, RES_UI);
+
+	init_websocket();
+	TRACK_RESOURCE(NULL, RES_WEBSOCKET);
+}
+
 void clean_up()
 {
 	pthread_mutex_lock(&g_resources_mtx);
@@ -157,6 +112,9 @@ void clean_up()
 				break;
 			case RES_LOG:
 				destroy_log();
+				break;
+			case RES_SIG:
+				destroy_sig_handler();
 				break;
 			case RES_TXN:
 				destroy_txn();
@@ -192,4 +150,95 @@ void clean_up()
 	}
 	g_resources = NULL;
 	pthread_mutex_unlock(&g_resources_mtx);
+}
+
+void test()
+{
+	char command[2] = {0};
+	char uuid[37] = {0};
+	int market_idx = -1;
+	while (!g_shutdown_flag) {
+		printf("test1(1) - get account info()\n"
+			   "test2(2) - order test(KRW-XRP, bid, 5000, 0, price)\n"
+			   "test3(3) - order test(KRW-XRP, bid, 5000, 0, best, fok)\n"
+			   "test4(4) - order test(KRW-XRP, bid, 5000, 0, best, ioc)\n"
+			   "test5(5) - print orders\n"
+			   "test6(6) - order test(KRW-XRP, bid, 2400, 4, limit, fok)\n"
+			   "test7(7) - order test(KRW-XRP, bid, 2500, 4, limit, ioc)\n"
+			   "test7(8) - order test(KRW-XRP, bid, 2550, 4, limit)\n"
+			   "test9(9) - cancel order\n"
+			   "test10(10) - cancel all orders\n"
+			   "test11(11) - get order status\n"
+			   "test12(12) - get open orders status\n"
+			   "test13(13) - get closed orders status\n"
+			   "Quit(q)\n"
+			   ">>> ");
+		scanf("%s", command);
+		if (strcmp(command, "1") == 0) {
+			enqueue_task(get_account_info_task, NULL);
+		} else if (strcmp(command, "2") == 0) {
+			order_t *o = make_order("KRW-XRP", "bid", 5000, 0, "price", NULL,
+					NULL);
+			enqueue_task(place_order_task, (void *) o);
+		} else if (strcmp(command, "3") == 0) {
+			order_t *o = make_order("KRW-XRP", "bid", 5000, 0, "best", "fok",
+					NULL);
+			enqueue_task(place_order_task, (void *) o);
+		} else if (strcmp(command, "4") == 0) {
+			order_t *o = make_order("KRW-XRP", "bid", 5000, 0, "best", "ioc",
+					NULL);
+			enqueue_task(place_order_task, (void *) o);
+		} else if (strcmp(command, "5") == 0) {
+			print_order(g_orders->root);
+		} else if (strcmp(command, "6") == 0) {
+			order_t *o = make_order("KRW-XRP", "bid", 2400, 2, "limit", "fok",
+					NULL);
+			enqueue_task(place_order_task, (void *) o);
+		} else if (strcmp(command, "7") == 0) {
+			order_t *o = make_order("KRW-XRP", "bid", 2500, 4, "limit", "ioc",
+					NULL);
+			enqueue_task(place_order_task, (void *) o);
+		} else if (strcmp(command, "8") == 0) {
+			order_t *o = make_order("KRW-XRP", "bid", 2550, 4, "limit", NULL,
+					NULL);
+			enqueue_task(place_order_task, (void *) o);
+		} else if (strcmp(command, "9") == 0) {
+			printf("uuid >> ");
+			scanf("%s", &uuid);
+			char *arg;
+			MALLOC(arg, sizeof(char) * 37);
+			strcpy(arg, uuid);
+			enqueue_task(cancel_order_task, (void *)arg);
+		} else if (strcmp(command, "10") == 0) {
+			// cancel all orders
+			cancel_option_t *co = create_cancel_option("all", NULL, NULL, NULL,
+					10, NULL);
+			enqueue_task(cancel_by_bulk_task, (void *)co);
+		} else if (strcmp(command, "11") == 0) {
+			printf("uuid >> ");
+			scanf("%s", &uuid);
+			char *arg;
+			MALLOC(arg, sizeof(char) * 37);
+			strcpy(arg, uuid);
+			enqueue_task(get_order_status_task, (void *)arg);
+		} else if (strcmp(command, "12") == 0) {
+			order_status_t *os = create_order_status(NULL, 2, 0, 0, 1, 100, NULL);
+			enqueue_task(get_open_orders_status_task, (void *)os); 
+		} else if (strcmp(command, "13") == 0) {
+			order_status_t *os = create_order_status(NULL, 2, 0, 0, 0, 5, NULL);
+			enqueue_task(get_closed_orders_status_task, (void *)os); 
+		} else if (strcmp(command, "q") == 0) {
+			// check if any orders are left
+			if (atomic_load(&g_orders_empty)) {
+				printf("Quit, no orders\n");
+			} else {
+				cancel_by_bulk("all", NULL, NULL, NULL, 10, NULL);
+			}
+			break;
+		} else {
+			pr_err("Wrong command\n");
+		}
+		command[0] = '\0';
+		uuid[0] = '\0';
+	}
 }

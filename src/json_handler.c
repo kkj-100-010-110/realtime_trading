@@ -134,14 +134,14 @@ void parse_websocket_data(const char *data, size_t len)
 	json_error_t error;
 	root = json_loadb(data, len, 0, &error);
 	if (!root) {
-		LOG_ERR("json_loadb() failed: %s", error.text);
+		MY_LOG_ERR("json_loadb() failed: %s", error.text);
 		pr_err("json_loadb() failed: %s", error.text);
 		return;
 	}
 
 	const char *type_str = json_string_value(json_object_get(root, "type"));
 	if (!type_str) {
-		LOG_ERR("json_string_value() failed.");
+		MY_LOG_ERR("json_string_value() failed.");
 		pr_err("json_string_value() failed.");
 		json_decref(root);
 		return;
@@ -165,7 +165,7 @@ void parse_ticker_json(json_t *root)
     const char *code = json_string_value(json_object_get(root, "code"));
 	int idx = get_code_index(code);
 	if (idx == -1) {
-		LOG_ERR("unknown code: %s", code);
+		MY_LOG_ERR("unknown code: %s", code);
 		pr_err("unknown code: %s", code);
 		return;
 	}
@@ -192,7 +192,7 @@ void parse_orderbook_json(json_t *root)
     const char *code = json_string_value(json_object_get(root, "code"));
 	int idx = get_code_index(code);
 	if (idx == -1) {
-		LOG_ERR("unknown code: %s");
+		MY_LOG_ERR("unknown code: %s");
 		pr_err("unknown code: %s", code);
 		return;
 	}
@@ -212,30 +212,6 @@ void parse_orderbook_json(json_t *root)
 		g_orderbooks[idx].spread = g_orderbooks[idx].best_ask_price - g_orderbooks[idx].best_bid_price;
 		g_orderbooks[idx].bid_ask_ratio = g_orderbooks[idx].best_bid_size / g_orderbooks[idx].best_ask_size;
 	}
-
-#if PRINT
-    // orderbook unit
-    json_t *orderbook_units = json_object_get(root, "orderbook_units");
-    if (json_is_array(orderbook_units)) {
-        size_t index;
-        json_t *unit;
-        json_array_foreach(orderbook_units, index, unit) {
-            double ask_price = json_real_value(json_object_get(unit, "ask_price"));
-            double bid_price = json_real_value(json_object_get(unit, "bid_price"));
-            double ask_size = json_real_value(json_object_get(unit, "ask_size"));
-            double bid_size = json_real_value(json_object_get(unit, "bid_size"));
-
-            // ask & bit price unit
-            pr_out("Unit %zu: Ask Price=%.2f, Ask Size=%.2f, Bid Price=%.2f, Bid Size=%.2f\n",
-                   index, ask_price, ask_size, bid_price, bid_size);
-        }
-    }
-
-    pr_out("Code: %s", code);
-    pr_out("Timestamp: %lld", (long long)timestamp);
-    pr_out("Total Ask Size: %.2f", total_ask_size);
-    pr_out("Total Bid Size: %.2f", total_bid_size);
-#endif//PRINT
 }
 
 void parse_trade_json(json_t *root)
@@ -255,11 +231,13 @@ void parse_trade_json(json_t *root)
 			txn = create_txn(trade_date, trade_time, code, ask_bid, trade_price,
 					trade_volume);
 
-			// account update
-
 			pr_trade("%s, %s Code=%s, Side=%s, Price=%.8f, Volume=%.8f",
 					trade_date, trade_time, code, trade_price, trade_volume, ask_bid);
 
+			// account update - should be updated soon
+			enqueue_task(get_account_info_task, NULL);
+
+			// order update
 			order_status_t *os = create_order_status(code, 1, trade_timestamp, 0,
 					0, 5, NULL);
 			enqueue_task(get_closed_orders_status_task, (void *)os); 
@@ -277,13 +255,13 @@ void parse_account_json(const char *data)
 
 	root = json_loads(data, 0, &error);
 	if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
+		MY_LOG_ERR("json_loads() failed: %s", error.text);
 		pr_err("json_loads() failed: %s", error.text);
 		return;
 	}
 
 	if (!json_is_array(root)) {
-		LOG_ERR("json_is_array() failed.");
+		MY_LOG_ERR("json_is_array() failed.");
 		pr_err("json_is_array() failed.");
 		json_decref(root);
 		return;
@@ -315,53 +293,25 @@ void parse_place_order_response(const char *data)
 	json_error_t error;
     json_t *root = json_loads(data, 0, &error);
     if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
+		MY_LOG_ERR("json_loads() failed: %s", error.text);
 		pr_err("json_loads() failed: %s", error.text);
         return;
     }
 
+	pr_out("data: %s", data);
     const char *uuid = json_string_value(json_object_get(root, "uuid"));
     const char *market = json_string_value(json_object_get(root, "market"));
     const char *side = json_string_value(json_object_get(root, "side"));
-    double volume = json_real_value(json_object_get(root, "volume"));
-    double price = json_real_value(json_object_get(root, "price"));
+    const char *ord_type = json_string_value(json_object_get(root, "ord_type"));
+    double volume = atof(json_string_value(json_object_get(root, "volume")));
+    double price = atof(json_string_value(json_object_get(root, "price")));
     const char *state = json_string_value(json_object_get(root, "state"));
 
-	// account update
-
 	// order update
-	insert_order(uuid, market, volume, price, side, state);
+	insert_order(uuid, market, volume, price, side, ord_type, state);
 
-	pr_order("Market: %s, Side: %s, Volume: %.8f, Price: %.8f, State: %s, UUID: %s",
-			 market, side, volume, price, state, uuid);
-
-    json_decref(root);
-}
-
-void parse_market_order_response(const char *data)
-{
-	json_error_t error;
-    json_t *root = json_loads(data, 0, &error);
-    if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
-		pr_err("json_loads() failed: %s", error.text);
-        return;
-    }
-
-    const char *uuid = json_string_value(json_object_get(root, "uuid"));
-    const char *market = json_string_value(json_object_get(root, "market"));
-    const char *side = json_string_value(json_object_get(root, "side"));
-    double volume = json_real_value(json_object_get(root, "volume"));
-    double price = json_real_value(json_object_get(root, "price"));
-    const char *state = json_string_value(json_object_get(root, "state"));
-
-	// account update
-
-	// order update
-	insert_order(uuid, market, volume, price, side, state);
-
-	pr_order("Market: %s, Side: %s, Volume: %.8f, Price: %.8f, State: %s, UUID: %s",
-			 market, side, volume, price, state, uuid);
+	pr_order("Market: %s, Side: %s, Order type: %s, Volume: %.8f, Price: %.8f, State: %s, UUID: %s",
+			 market, side, ord_type, volume, price, state, uuid);
 
     json_decref(root);
 }
@@ -373,7 +323,7 @@ void parse_cancel_order_response_json(const char *data)
 
     root = json_loads(data, 0, &error);
     if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
+		MY_LOG_ERR("json_loads() failed: %s", error.text);
 		pr_err("json_loads() failed: %s", error.text);
         return;
     }
@@ -382,8 +332,9 @@ void parse_cancel_order_response_json(const char *data)
     const char *side = json_string_value(json_object_get(root, "side"));
     const char *state = json_string_value(json_object_get(root, "state"));
     const char *market = json_string_value(json_object_get(root, "market"));
-    double price = json_real_value(json_object_get(root, "price"));
-    double executed_volume = json_real_value(json_object_get(root, "executed_volume"));
+    double price = atof(json_string_value(json_object_get(root, "price")));
+    double executed_volume = atof(json_string_value(json_object_get(root,
+				"executed_volume")));
 
 	pr_order("Market: %s, Side: %s, Executed Volume: %.8f, Price: %.2f, State: %s, UUID: %s",
 			 market, side, executed_volume, price, state, uuid);
@@ -406,7 +357,7 @@ void parse_get_order_status(const char *data)
 
 	root = json_loads(data, 0, &error);
     if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
+		MY_LOG_ERR("json_loads() failed: %s", error.text);
 		pr_err("json_loads() failed: %s", error.text);
         return;
     }
@@ -425,12 +376,20 @@ void parse_get_order_status(const char *data)
 
 void parse_get_open_orders_status(const char * data)
 {
+//	if (data[0] != '{' && data[0] != '[') {
+//		pr_err("no data.");
+//		return;
+//	}
+
+	// check
+	pr_out("data: %s", data);
+
 	json_t *root;
 	json_error_t error;
 
 	root = json_loads(data, 0, &error);
 	if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
+		MY_LOG_ERR("json_loads() failed: %s", error.text);
 		pr_err("json_loads() failed: %s", error.text);
 		return;
 	}
@@ -443,9 +402,10 @@ void parse_get_open_orders_status(const char * data)
 		const char *market = json_string_value(json_object_get(value, "market"));
 		const char *side = json_string_value(json_object_get(value, "side"));
 		const char *ord_type = json_string_value(json_object_get(value, "ord_type"));
-		double price = json_real_value(json_object_get(value, "price"));
-		double volume = json_real_value(json_object_get(value, "volume"));
-		double executed_volume = json_real_value(json_object_get(value, "executed_volume"));
+		double price = atof(json_string_value(json_object_get(value, "price")));
+		double volume = atof(json_string_value(json_object_get(value, "volume")));
+		double executed_volume = atof(json_string_value(json_object_get(value,
+						"executed_volume")));
 
 		pr_out("Open Order: uuid=%s, state=%s, market=%s, side=%s, type=%s, price=%.2f, volume=%.8f, executed_volume=%.8f",
 				uuid, state, market, side, ord_type, price, volume, executed_volume);
@@ -460,7 +420,7 @@ void parse_get_closed_orders_status(const char *data)
 
 	root = json_loads(data, 0, &error);
     if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
+		MY_LOG_ERR("json_loads() failed: %s", error.text);
 		pr_err("json_loads() failed: %s", error.text);
         return;
     }
@@ -473,9 +433,10 @@ void parse_get_closed_orders_status(const char *data)
 		const char *market = json_string_value(json_object_get(value, "market"));
 		const char *side = json_string_value(json_object_get(value, "side"));
 		const char *ord_type = json_string_value(json_object_get(value, "ord_type"));
-		double price = json_real_value(json_object_get(value, "price"));
-		double volume = json_real_value(json_object_get(value, "volume"));
-		double executed_volume = json_real_value(json_object_get(value, "executed_volume"));
+		double price = atof(json_string_value(json_object_get(value, "price")));
+		double volume = atof(json_string_value(json_object_get(value, "volume")));
+		double executed_volume = atof(json_string_value(json_object_get(value,
+						"executed_volume")));
 		remove_order(uuid);
 		pr_out("Closed Order: uuid=%s, state=%s, market=%s, side=%s, type=%s, price=%.2f, volume=%.8f, executed_volume=%.8f",
 				uuid, state, market, side, ord_type, price, volume, executed_volume);
@@ -489,7 +450,7 @@ void parse_cancel_by_bulk_response(const char *data)
     json_t *root = json_loads(data, 0, &error);
 
     if (!root) {
-		LOG_ERR("json_loads() failed: %s", error.text);
+		MY_LOG_ERR("json_loads() failed: %s", error.text);
 		pr_err("json_loads() failed: %s", error.text);
         return;
     }
@@ -504,13 +465,10 @@ void parse_cancel_by_bulk_response(const char *data)
             json_t *value;
             json_array_foreach(success_orders, index, value) {
                 const char *uuid = json_string_value(json_object_get(value, "uuid"));
-
 				// test
                 const char *market = json_string_value(json_object_get(value, "market"));
                 pr_cancel("Successfully canceled order: uuid=%s, market=%s", uuid, market);
-
 				remove_order(uuid);
-
 				//test
 				print_order(g_orders->root);
             }
@@ -529,8 +487,8 @@ void parse_cancel_by_bulk_response(const char *data)
 				const char *uuid = json_string_value(json_object_get(value, "uuid"));
 				const char *market = json_string_value(json_object_get(value, "market"));
 				pr_err("failed to cancel order: uuid=%s, market=%s", uuid, market);
-				LOG_ERR("failed to cancel order: uuid=%s, market=%s", uuid, market);
-				enqueue_retry_task(uuid, INITIAL_BACKOFF_MS);
+				MY_LOG_ERR("failed to cancel order: uuid=%s, market=%s", uuid, market);
+				//enqueue_retry_task(uuid, INITIAL_BACKOFF_MS); NOT RETRY
 			}
         }
     }

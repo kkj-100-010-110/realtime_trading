@@ -1,10 +1,10 @@
-[2025/04/01 04:19:20:3160] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
-[2025/04/01 04:19:20:4476] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
-[2025/04/01 04:19:20:4595] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
-[2025/04/01 04:19:20:4796] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
-[2025/04/01 04:19:35:1177] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
-[2025/04/01 04:19:35:7214] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 43.202.254.240
-[2025/04/01 04:19:50:5558] N: __lws_lc_untag:  -- [wsi|0|pipe] (0) 30.099s
-[2025/04/01 04:19:50:6945] N: __lws_lc_untag:  -- [vh|1|default||-1] (1) 30.215s
-[2025/04/01 04:19:50:6959] N: __lws_lc_untag:  -- [wsicli|0|WS/h1/default/api.upbit.com] (0) 15.578s
-[2025/04/01 04:19:50:6975] N: __lws_lc_untag:  -- [vh|0|netlink] (0) 30.237s
+[2025/04/15 15:35:27:1122] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
+[2025/04/15 15:35:27:1127] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
+[2025/04/15 15:35:27:1129] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
+[2025/04/15 15:35:27:1134] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
+[2025/04/15 15:35:27:3592] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
+[2025/04/15 15:35:27:3734] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 3.34.88.64
+[2025/04/15 15:35:57:7411] N: __lws_lc_untag:  -- [wsi|0|pipe] (0) 30.628s
+[2025/04/15 15:35:57:7466] N: __lws_lc_untag:  -- [vh|1|default||-1] (1) 30.633s
+[2025/04/15 15:35:57:7467] N: __lws_lc_untag:  -- [wsicli|0|WS/h1/default/api.upbit.com] (0) 30.387s
+[2025/04/15 15:35:57:7468] N: __lws_lc_untag:  -- [vh|0|netlink] (0) 30.633s
