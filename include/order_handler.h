@@ -62,8 +62,8 @@ void insert_order(const char *uuid, const char *market, double volume, double pr
 		const char *side, const char *ord_type, const char *status);
 void remove_order(const char *uuid);
 /* remove_order for ui */
-void ui_remove_order(int i);
 void update_order_status(const char *uuid, const char *status);
+void update_order_volume(const char *uuid, double remaining_volume);
 void destroy_order_handler();
 /* print for test */
 void print_order();

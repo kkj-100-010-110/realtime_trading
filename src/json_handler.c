@@ -128,7 +128,7 @@ void init_json_config()
 }
 
 /* WEBSOCKET RESPONSE JSON DATA PARSE BEGIN */
-void parse_websocket_data(const char *data, size_t len)
+void parse_websocket_public_data(const char *data, size_t len)
 {
 	json_t *root;
 	json_error_t error;
@@ -151,9 +151,42 @@ void parse_websocket_data(const char *data, size_t len)
         parse_ticker_json(root);
     } else if (strcmp(type_str, "orderbook") == 0) {
         parse_orderbook_json(root);
-    } else if (strcmp(type_str, "trade") == 0) {
-        parse_trade_json(root);
+    }
+	// no need for now
+	//else if (strcmp(type_str, "trade") == 0) {
+    //    parse_trade_json(root);
+	//}
+	
+	// reference count to zero, the value is destroyed and no longer used.
+	json_decref(root);
+}
+
+void parse_websocket_private_data(const char *data, size_t len)
+{
+	json_t *root;
+	json_error_t error;
+	root = json_loadb(data, len, 0, &error);
+	if (!root) {
+		MY_LOG_ERR("json_loadb() failed: %s", error.text);
+		pr_err("json_loadb() failed: %s", error.text);
+		return;
 	}
+
+	const char *type_str = json_string_value(json_object_get(root, "type"));
+	if (!type_str) {
+		MY_LOG_ERR("json_string_value() failed.");
+		pr_err("json_string_value() failed.");
+		json_decref(root);
+		return;
+	}
+
+	pr_out("type: %s", type_str);
+
+    if (strcmp(type_str, "myOrder") == 0) {
+        parse_my_order_json(root);
+    } else if (strcmp(type_str, "myAsset") == 0) {
+        parse_my_asset_json(root);
+    }
 	
 	// reference count to zero, the value is destroyed and no longer used.
 	json_decref(root);
@@ -214,36 +247,121 @@ void parse_orderbook_json(json_t *root)
 	}
 }
 
-void parse_trade_json(json_t *root)
+//void parse_trade_json(json_t *root)
+//{
+//	const char *trade_date = json_string_value(json_object_get(root, "trade_date"));
+//	const char *trade_time = json_string_value(json_object_get(root, "trade_time"));
+//	const char *code = json_string_value(json_object_get(root, "code"));
+//	const char *ask_bid = json_string_value(json_object_get(root, "ask_bid"));
+//	double trade_price = json_real_value(json_object_get(root, "trade_price"));
+//	double trade_volume = json_real_value(json_object_get(root, "trade_volume"));
+//	long trade_timestamp = json_integer_value(json_object_get(root, "trade_timestamp"));
+//
+//	order_status_t *os = create_order_status(code, 1, trade_timestamp, 0,
+//			0, 5, NULL);
+//}
+
+static void trade_done(json_t *root)
 {
-	if (json_is_array(root)) {
-		size_t index;
-		json_t *value;
-		json_array_foreach(root, index, value) {
-			transaction_t *txn;
-			const char *trade_date = json_string_value(json_object_get(root, "trade_date"));
-			const char *trade_time = json_string_value(json_object_get(root, "trade_date"));
-			const char *code = json_string_value(json_object_get(root, "code"));
-			const char *ask_bid = json_string_value(json_object_get(root, "ask_bid"));
-			double trade_price = json_real_value(json_object_get(root, "trade_price"));
-			double trade_volume = json_real_value(json_object_get(root, "trade_volume"));
-			long trade_timestamp = json_integer_value(json_object_get(root, "trade_timestamp"));
-			txn = create_txn(trade_date, trade_time, code, ask_bid, trade_price,
-					trade_volume);
+	transaction_t *txn;
+	long trade_timestamp = json_integer_value(json_object_get(root, "trade_timestamp"));
+	const char *uuid = json_string_value(json_object_get(root, "uuid"));
+	const char *trade_uuid = json_string_value(json_object_get(root, "trade_uuid"));
+	const char *code = json_string_value(json_object_get(root, "code"));
+	const char *ask_bid = json_string_value(json_object_get(root, "ask_bid"));
+	const char *order_type = json_string_value(json_object_get(root, "order_type"));
+	const char *state = json_string_value(json_object_get(root, "state"));
+	bool is_maker = json_boolean_value(json_object_get(root, "is_maker"));
+	double price = json_real_value(json_object_get(root, "price"));
+	double avg_price = json_real_value(json_object_get(root, "avg_price"));
+	double volume = json_real_value(json_object_get(root, "volume"));
+	double executed_volume = json_real_value(json_object_get(root, "executed_volume"));
+	double executed_funds = json_real_value(json_object_get(root, "executed_funds"));
+	double trade_fee = json_real_value(json_object_get(root, "trade_fee"));
+	
+	txn = create_txn(trade_timestamp, code, ask_bid, order_type, is_maker, state,
+					 price, avg_price, volume, executed_volume, executed_funds,
+					 trade_fee, uuid, trade_uuid);
 
-			pr_trade("%s, %s Code=%s, Side=%s, Price=%.8f, Volume=%.8f",
-					trade_date, trade_time, code, trade_price, trade_volume, ask_bid);
+	enqueue_task(save_txn_task, (void *)txn);
 
-			// account update - should be updated soon
-			enqueue_task(get_account_info_task, NULL);
+	struct tm *tm_info = localtime(&txn->trade_timestamp);
+	char datetime[20];
+	strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", tm_info);
+	pr_trade("%ld,%s,%s,%s,%s,%s,%s,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%s,%s",
+			txn->trade_timestamp, datetime, txn->code, txn->side, txn->ord_type,
+			txn->maker_taker, txn->state, txn->price, txn->avg_price,
+			txn->volume, txn->executed_volume, txn->executed_funds,
+			txn->trade_fee, txn->total, txn->uuid, txn->trade_uuid);
+}
 
-			// order update
-			order_status_t *os = create_order_status(code, 1, trade_timestamp, 0,
-					0, 5, NULL);
-			enqueue_task(get_closed_orders_status_task, (void *)os); 
-			enqueue_task(save_txn_task, (void *)txn);
+void parse_my_order_json(json_t *root) // dealing with trade, done and cancel
+{
+	const char *state = json_string_value(json_object_get(root, "state"));
+	const char *order_type = json_string_value(json_object_get(root, "order_type"));
+	const char *time_in_force = json_string_value(json_object_get(root, "time_in_force"));
+	const char *uuid = json_string_value(json_object_get(root, "uuid"));
+
+	if (strcmp(state, "wait") == 0 || strcmp(state, "watch") == 0) {
+		// parse_place_order_response() do this work.
+	} else if (strcmp(state, "cancel") == 0) {
+		remove_order(uuid);
+	} else if ((strcmp(order_type, "price") == 0 || strcmp(order_type, "market") == 0)) {
+		remove_order(uuid);
+		trade_done(root);
+	} else if (strcmp(order_type, "limit") == 0) {
+		if (time_in_force) {
+			if (strcmp(time_in_force, "ioc") == 0) { // cancel remains
+				if (strcmp(state, "done") == 0 || strcmp(state, "trade") == 0) {
+					trade_done(root);
+				}
+				remove_order(uuid);
+			} else { // "fok" : fill or kill(all or nothing)
+				if (strcmp(state, "done") == 0) trade_done(root);
+				else remove_order(uuid);
+			}
+		} else if (strcmp(state, "done") == 0) {
+			remove_order(uuid);
+			trade_done(root);
+		} else if (strcmp(state, "trade") == 0) {
+			double remaining_volume = json_real_value(json_object_get(root, "remaining_volume"));
+			update_order_volume(uuid, remaining_volume);
+			trade_done(root);
+		}
+	} else if (strcmp(order_type, "best") == 0) {
+		if (strcmp(time_in_force, "ioc") == 0) { // cancel remains
+			if (strcmp(state, "done") == 0 || strcmp(state, "trade") == 0) {
+				trade_done(root);
+			}
+			remove_order(uuid);
+		} else { // "fok" : fill or kill(all or nothing)
+			if (strcmp(state, "done") == 0) trade_done(root);
+			else remove_order(uuid);
 		}
 	}
+}
+
+void parse_my_asset_json(json_t *root)
+{
+	json_t *assets = json_object_get(root, "assets");
+    if (!json_is_array(assets)) {
+		MY_LOG_ERR("json_is_array() failed.");
+		pr_err("json_is_array() failed.");
+        return;
+    }
+
+	pr_out("in parse_my_asset_json()");
+
+	size_t index;
+    json_t *asset_obj;
+    json_array_foreach(assets, index, asset_obj) {
+        const char *currency = json_string_value(json_object_get(asset_obj, "currency"));
+        double balance = json_real_value(json_object_get(asset_obj, "balance"));
+        double locked = json_real_value(json_object_get(asset_obj, "locked"));
+		update_account(currency, balance, locked);
+		pr_out("Currency: %s | Balance: %.2f | Locked: %.2f\n",
+				currency, balance, locked);
+    }
 }
 /* WEBSOCKET RESPONSE JSON DATA PARSE END */
 
@@ -277,12 +395,12 @@ void parse_account_json(const char *data)
 			const char *c = json_string_value(currency);
 			const char *b = json_string_value(balance);
 			const char *l = json_string_value(locked);
-			int idx = get_index(c);
-			strcpy(g_account[idx].currency, c);
-			g_account[idx].balance = atof(b);
-			g_account[idx].locked = atof(l);
-			pr_out("Currency: %s | Balance: %.2f | Locked: %.2f\n",
-					g_account[idx].currency, g_account[idx].balance, g_account[idx].locked);
+			double balance = 0.0;
+			double locked = 0.0;
+			if (b) balance = atof(b);
+			if (l) locked = atof(l);
+			update_account(c, balance, locked);
+			pr_out("Currency: %s | Balance: %s | Locked: %s\n", c, b, l);
 		}
 	}
 	json_decref(root);
@@ -298,13 +416,18 @@ void parse_place_order_response(const char *data)
         return;
     }
 
-	pr_out("data: %s", data);
     const char *uuid = json_string_value(json_object_get(root, "uuid"));
     const char *market = json_string_value(json_object_get(root, "market"));
     const char *side = json_string_value(json_object_get(root, "side"));
     const char *ord_type = json_string_value(json_object_get(root, "ord_type"));
-    double volume = atof(json_string_value(json_object_get(root, "volume")));
-    double price = atof(json_string_value(json_object_get(root, "price")));
+
+    double volume = 0.0;
+    double price = 0.0;
+	const char *price_str = json_string_value(json_object_get(root, "price"));
+	const char *volume_str = json_string_value(json_object_get(root, "volume"));
+	if (price_str) price = atof(price_str);
+	if (volume_str) volume = atof(volume_str);
+
     const char *state = json_string_value(json_object_get(root, "state"));
 
 	// order update
@@ -332,20 +455,35 @@ void parse_cancel_order_response_json(const char *data)
     const char *side = json_string_value(json_object_get(root, "side"));
     const char *state = json_string_value(json_object_get(root, "state"));
     const char *market = json_string_value(json_object_get(root, "market"));
-    double price = atof(json_string_value(json_object_get(root, "price")));
-    double executed_volume = atof(json_string_value(json_object_get(root,
-				"executed_volume")));
+    double executed_volume = 0.0;
+    double price = 0.0;
+	const char *price_str = json_string_value(json_object_get(root, "price"));
+	const char *executed_volume_str = json_string_value(json_object_get(root, "executed_volume"));
+	if (price_str) price = atof(price_str);
+	if (executed_volume_str) executed_volume = atof(executed_volume_str);
 
-	pr_order("Market: %s, Side: %s, Executed Volume: %.8f, Price: %.2f, State: %s, UUID: %s",
+	pr_cancel("Market: %s, Side: %s, Executed Volume: %.8f, Price: %.2f, State: %s, UUID: %s",
 			 market, side, executed_volume, price, state, uuid);
 
-	if (strcmp(state, "wait") == 0) {
-		update_order_status(uuid, state);
-		enqueue_retry_task(uuid, INITIAL_BACKOFF_MS);
-	} else if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {
-		pr_cancel("uuid: %s, state: %s", uuid, state);
+	update_order_status(uuid, state);
+	if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {
 		remove_order(uuid);
 	}
+
+	// in case disconnected websocket private
+	//if (!atomic_load(&g_websocket_private_connected)) {
+	//	if (strcmp(state, "wait") == 0) {
+	//		// retry uuid
+	//		char *retry_uuid;
+	//		MALLOC(retry_uuid, 37);
+	//		strcpy(retry_uuid, uuid);
+
+	//		enqueue_retry_task(retry_uuid, INITIAL_BACKOFF_MS);
+	//	} else if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {
+	//		pr_cancel("uuid: %s, state: %s", uuid, state);
+	//		remove_order(uuid);
+	//	}
+	//}
 
     json_decref(root);
 }
@@ -376,14 +514,6 @@ void parse_get_order_status(const char *data)
 
 void parse_get_open_orders_status(const char * data)
 {
-//	if (data[0] != '{' && data[0] != '[') {
-//		pr_err("no data.");
-//		return;
-//	}
-
-	// check
-	pr_out("data: %s", data);
-
 	json_t *root;
 	json_error_t error;
 
@@ -402,10 +532,15 @@ void parse_get_open_orders_status(const char * data)
 		const char *market = json_string_value(json_object_get(value, "market"));
 		const char *side = json_string_value(json_object_get(value, "side"));
 		const char *ord_type = json_string_value(json_object_get(value, "ord_type"));
-		double price = atof(json_string_value(json_object_get(value, "price")));
-		double volume = atof(json_string_value(json_object_get(value, "volume")));
-		double executed_volume = atof(json_string_value(json_object_get(value,
-						"executed_volume")));
+		double volume = 0.0;
+		double price = 0.0;
+		double executed_volume = 0.0;
+		const char *price_str = json_string_value(json_object_get(root, "price"));
+		const char *volume_str = json_string_value(json_object_get(root, "volume"));
+		const char *executed_volume_str = json_string_value(json_object_get(root, "executed_volume"));
+		if (price_str) price = atof(price_str);
+		if (volume_str) volume = atof(volume_str);
+		if (executed_volume_str) executed_volume = atof(executed_volume_str);
 
 		pr_out("Open Order: uuid=%s, state=%s, market=%s, side=%s, type=%s, price=%.2f, volume=%.8f, executed_volume=%.8f",
 				uuid, state, market, side, ord_type, price, volume, executed_volume);
@@ -433,10 +568,16 @@ void parse_get_closed_orders_status(const char *data)
 		const char *market = json_string_value(json_object_get(value, "market"));
 		const char *side = json_string_value(json_object_get(value, "side"));
 		const char *ord_type = json_string_value(json_object_get(value, "ord_type"));
-		double price = atof(json_string_value(json_object_get(value, "price")));
-		double volume = atof(json_string_value(json_object_get(value, "volume")));
-		double executed_volume = atof(json_string_value(json_object_get(value,
-						"executed_volume")));
+		double volume = 0.0;
+		double price = 0.0;
+		double executed_volume = 0.0;
+		const char *price_str = json_string_value(json_object_get(root, "price"));
+		const char *volume_str = json_string_value(json_object_get(root, "volume"));
+		const char *executed_volume_str = json_string_value(json_object_get(root, "executed_volume"));
+		if (price_str) price = atof(price_str);
+		if (volume_str) volume = atof(volume_str);
+		if (executed_volume_str) executed_volume = atof(executed_volume_str);
+
 		remove_order(uuid);
 		pr_out("Closed Order: uuid=%s, state=%s, market=%s, side=%s, type=%s, price=%.2f, volume=%.8f, executed_volume=%.8f",
 				uuid, state, market, side, ord_type, price, volume, executed_volume);
@@ -488,7 +629,6 @@ void parse_cancel_by_bulk_response(const char *data)
 				const char *market = json_string_value(json_object_get(value, "market"));
 				pr_err("failed to cancel order: uuid=%s, market=%s", uuid, market);
 				MY_LOG_ERR("failed to cancel order: uuid=%s, market=%s", uuid, market);
-				//enqueue_retry_task(uuid, INITIAL_BACKOFF_MS); NOT RETRY
 			}
         }
     }

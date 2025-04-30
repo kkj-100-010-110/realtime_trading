@@ -7,21 +7,32 @@
 #define MAX_TRANSACTION_FILES 5
 
 typedef struct {
-	char date[11];
-	char time[9];
+	long trade_timestamp;
 	char code[16];
 	char side[4];
+	char ord_type[7];
+	char maker_taker[6];
+    char state[7];
 	double price;
+    double avg_price;
 	double volume;
+    double executed_volume;
+    double executed_funds;
+    double trade_fee;
+    double total;
+    char uuid[37];
+    char trade_uuid[37];
 } transaction_t;
 
 void init_txn();
 void destroy_txn();
-transaction_t *create_txn(const char *date, const char *time, const char *market,
-					  const char *side, double price, double volume);
+transaction_t *create_txn(long trade_timestamp, const char *code, const char *side,
+						  const char *ord_type, bool is_maker, const char *state,
+						  double price, double avg_price, double volume,
+						  double executed_volume, double executed_funds,
+						  double trade_fee, const char *uuid, const char *trade_uuid);
 void rotate_txn_file();
-void save_transaction(const char *date, const char *time, const char *market,
-					  const char *side, double price, double volume);
+void save_transaction(transaction_t *txn);
 void save_txn_task(void *arg);
 
 #endif//_TRANSACTION_H

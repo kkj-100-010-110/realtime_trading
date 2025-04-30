@@ -14,6 +14,14 @@ void init_txn()
 		pr_err("fopen() failed.");
 		exit(EXIT_FAILURE);
 	}
+	struct stat st;
+    if (stat("./transactions/txn_1.csv", &st) == 0 && st.st_size == 0) {
+        fprintf(txn_file,
+				"trade_timestamp,datetime,code,side,ord_type,maker_taker,state,"
+				"price,avg_price,volume,executed_volume,executed_funds,trade_fee,"
+				"total,uuid,trade_uuid\n");
+        fflush(txn_file);
+    }
 }
 
 void destroy_txn()
@@ -27,17 +35,30 @@ void destroy_txn()
 	pthread_mutex_destroy(&txn_mutex);
 }
 
-transaction_t *create_txn(const char *date, const char *time, const char *market,
-					  const char *side, double price, double volume)
+transaction_t *create_txn(long trade_timestamp, const char *code, const char *side,
+						  const char *ord_type, bool is_maker, const char *state,
+						  double price, double avg_price, double volume,
+						  double executed_volume, double executed_funds,
+						  double trade_fee, const char *uuid, const char *trade_uuid)
 {
 	transaction_t *txn;
 	MALLOC(txn, sizeof(transaction_t));
-	strcpy(txn->date, date);
-	strcpy(txn->time, time);
-	strcpy(txn->code, market);
+	txn->trade_timestamp = trade_timestamp;
+	strcpy(txn->code, code);
 	strcpy(txn->side, side);
+	strcpy(txn->ord_type, ord_type);
+	strcpy(txn->maker_taker, is_maker ? "maker" : "taker"); // true: maker order, false: taker order
+	strcpy(txn->state, state);
 	txn->price = price;
+	txn->avg_price = avg_price;
 	txn->volume = volume;
+	txn->executed_volume = executed_volume;
+	txn->executed_funds = executed_funds;
+	txn->trade_fee = trade_fee;
+	if (strcmp(txn->side, "ASK") == 0) txn->total = executed_funds - trade_fee;
+	else txn->total = executed_funds + trade_fee;
+	strcpy(txn->uuid, uuid);
+	strcpy(txn->trade_uuid, trade_uuid);
 
 	return txn;
 }
@@ -47,7 +68,7 @@ void rotate_txn_file()
 	pthread_mutex_lock(&txn_mutex);
 
     struct stat st;
-    if (stat("./transactions/txn_1.csv", &st) == 0 && st.st_size > MAX_TRANSACTION_FILES) {
+    if (stat("./transactions/txn_1.csv", &st) == 0 && st.st_size > MAX_FILE_SIZE) {
         fclose(txn_file);
 
         char oldest_file[64];
@@ -72,17 +93,24 @@ void rotate_txn_file()
 	pthread_mutex_unlock(&txn_mutex);
 }
 
-void save_transaction(const char *date, const char *time, const char *code,
-					  const char *side, double price, double volume)
+void save_transaction(transaction_t *txn)
 {
 	pthread_mutex_lock(&txn_mutex);
 
     rotate_txn_file();
 
-    fprintf(txn_file, "%s,%s,%s,%s,%.2f,%.6f\n", date, time, code, side,
-			price, volume);
-    fflush(txn_file);			// send the buffer to kernel
-    fsync(fileno(txn_file));	// force to store kernel buffer on the disk
+	struct tm *tm_info = localtime(&txn->trade_timestamp);
+	char datetime[20];
+	strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", tm_info);
+    fprintf(txn_file,
+			"%ld,%s,%s,%s,%s,%s,%s,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%s,%s\n",
+			txn->trade_timestamp, datetime, txn->code, txn->side, txn->ord_type,
+			txn->maker_taker, txn->state, txn->price, txn->avg_price,
+			txn->volume, txn->executed_volume, txn->executed_funds,
+			txn->trade_fee, txn->total, txn->uuid, txn->trade_uuid);
+
+    fflush(txn_file); // send the buffer to kernel
+    fsync(fileno(txn_file)); // force to store kernel buffer on the disk
 
 	pthread_mutex_unlock(&txn_mutex);
 }
@@ -95,10 +123,19 @@ void save_txn_task(void *arg)
 
     rotate_txn_file();
 
-    fprintf(txn_file, "%s,%s,%s,%s,%.2f,%.6f\n", txn->date, txn->time,
-			txn->code, txn->side, txn->price, txn->volume);
-    fflush(txn_file);			// send the buffer to kernel
-    fsync(fileno(txn_file));	// force to store kernel buffer on the disk
+	struct tm *tm_info = localtime(&txn->trade_timestamp);
+	char datetime[20];
+	strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", tm_info);
+
+    fprintf(txn_file,
+			"%ld,%s,%s,%s,%s,%s,%s,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%s,%s\n",
+			txn->trade_timestamp, datetime, txn->code, txn->side, txn->ord_type,
+			txn->maker_taker, txn->state, txn->price, txn->avg_price,
+			txn->volume, txn->executed_volume, txn->executed_funds,
+			txn->trade_fee, txn->total, txn->uuid, txn->trade_uuid);
+
+    fflush(txn_file); // send the buffer to kernel
+    fsync(fileno(txn_file)); // force to store kernel buffer on the disk
 
 	pthread_mutex_unlock(&txn_mutex);
 

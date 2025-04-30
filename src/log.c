@@ -55,7 +55,8 @@ void init_log()
 		exit(EXIT_FAILURE);
 	}
 	/* logging lws error */
-	lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE, log_emit);
+	//lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE, log_emit);
+	lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, log_emit);
 }
 
 void destroy_log()

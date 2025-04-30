@@ -45,7 +45,7 @@ bool dequeue_task(task_t *t);
 void *worker_thread(void *arg);
 
 /* RETRY */
-void enqueue_retry_task(const char *uuid, int initial_backoff_ms);
+void enqueue_retry_task(char *uuid, int initial_backoff_ms);
 void process_retry_task(void *arg);
 
 #endif//_THREAD_QUEUE_H

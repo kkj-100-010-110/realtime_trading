@@ -1,0 +1,1 @@
+trade_timestamp,datetime,code,side,ord_type,maker_taker,state,price,avg_price,volume,executed_volume,executed_funds,trade_fee,total,uuid,trade_uuid

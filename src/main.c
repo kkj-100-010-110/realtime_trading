@@ -13,21 +13,23 @@ pthread_mutex_t g_resources_mtx = PTHREAD_MUTEX_INITIALIZER;
 void load_env();
 void set_up();
 void clean_up();
+void test();
 
 int main(void)
 {
 	set_up();
 
-	//test();
+	test();
 
-#ifndef UI_ON
-	while (1) {
+#if UI_ON
+	while (!g_shutdown_flag) {
 		if (update_ui()) {
 			break;
 		}
 		refresh();
 		usleep(100000);
 	}
+
 #endif//UI_ON
 
 	clean_up();
@@ -62,6 +64,8 @@ void set_up()
 {
 	atexit(clean_up);
 
+	setlocale(LC_NUMERIC, "");
+
 	load_env();
 
 	init_log();
@@ -91,10 +95,12 @@ void set_up()
 	init_thread_queue();
 	TRACK_RESOURCE(NULL, RES_THREAD_QUEUE);
 
-	//init_ui();
-	//TRACK_RESOURCE(NULL, RES_UI);
+#if UI_ON
+	init_ui();
+	TRACK_RESOURCE(NULL, RES_UI);
+#endif
 
-	init_websocket();
+	init_websocket_all();
 	TRACK_RESOURCE(NULL, RES_WEBSOCKET);
 }
 
@@ -141,7 +147,7 @@ void clean_up()
 				destroy_ui();
 				break;
 			case RES_WEBSOCKET:
-				destroy_websocket();
+				destroy_websocket_all();
 				break;
 		}
 		resource_node_t* next = current->next;
@@ -157,9 +163,9 @@ void test()
 	char command[2] = {0};
 	char uuid[37] = {0};
 	int market_idx = -1;
-	while (!g_shutdown_flag) {
+	while (!atomic_load(&g_shutdown_flag)) {
 		printf("test1(1) - get account info()\n"
-			   "test2(2) - order test(KRW-XRP, bid, 5000, 0, price)\n"
+			   "test2(2) - order test(KRW-DOGE, bid, 5000, 0, price)\n"
 			   "test3(3) - order test(KRW-XRP, bid, 5000, 0, best, fok)\n"
 			   "test4(4) - order test(KRW-XRP, bid, 5000, 0, best, ioc)\n"
 			   "test5(5) - print orders\n"
@@ -177,7 +183,7 @@ void test()
 		if (strcmp(command, "1") == 0) {
 			enqueue_task(get_account_info_task, NULL);
 		} else if (strcmp(command, "2") == 0) {
-			order_t *o = make_order("KRW-XRP", "bid", 5000, 0, "price", NULL,
+			order_t *o = make_order("KRW-DOGE", "bid", 5000, 0, "price", NULL,
 					NULL);
 			enqueue_task(place_order_task, (void *) o);
 		} else if (strcmp(command, "3") == 0) {
@@ -229,6 +235,7 @@ void test()
 			enqueue_task(get_closed_orders_status_task, (void *)os); 
 		} else if (strcmp(command, "q") == 0) {
 			// check if any orders are left
+			atomic_store(&g_shutdown_flag, true);
 			if (atomic_load(&g_orders_empty)) {
 				printf("Quit, no orders\n");
 			} else {

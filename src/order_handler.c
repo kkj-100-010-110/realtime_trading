@@ -183,25 +183,6 @@ void remove_order(const char *uuid)
 	pthread_mutex_unlock(&order_mtx);
 }
 
-void ui_remove_order(int i)
-{
-	pthread_mutex_lock(&order_mtx);
-
-	if (i >= 0 && i < MAX_ORDER_NUM) {
-		if (rb_contain(g_orders, (void *)g_order_arr[i]->uuid)) {
-			rb_remove(g_orders, (void *)g_order_arr[i]->uuid);
-		}
-		g_order_arr[i] = NULL;
-		indices &= ~(1 << i);
-		if (atomic_load(&g_orders_full)) {
-			atomic_store(&g_orders_full, false);
-		}
-	}
-
-	pthread_mutex_unlock(&order_mtx);
-}
-
-
 void update_order_status(const char *uuid, const char *status)
 {
 	pthread_mutex_lock(&order_mtx);
@@ -209,6 +190,17 @@ void update_order_status(const char *uuid, const char *status)
 	order_t *o = NULL;
 	o = rb_find(g_orders->root, g_orders->compare, (void *)uuid)->data;
 	strcpy(o->status, status);
+
+	pthread_mutex_unlock(&order_mtx);
+}
+
+void update_order_volume(const char *uuid, double remaining_volume)
+{
+	pthread_mutex_lock(&order_mtx);
+
+	order_t *o = NULL;
+	o = rb_find(g_orders->root, g_orders->compare, (void *)uuid)->data;
+	o->volume = remaining_volume;
 
 	pthread_mutex_unlock(&order_mtx);
 }

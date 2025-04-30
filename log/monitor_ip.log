@@ -1,1 +1,2 @@
 Failed to load .env
+Telegram API Error: {"ok":false,"error_code":400,"description":"Bad Request: chat not found"}

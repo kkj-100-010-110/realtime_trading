@@ -36,7 +36,7 @@
     JSON_STR("market", market) "," \
     JSON_STR("ord_type", ord_type) "," \
     JSON_STR("price", price) "," \
-    JSON_STR("side", side) "," \
+    JSON_STR("side", side) \
     JSON_END
 
 #define MARKET_ORDER_TEMPLATE(identifier, market, ord_type, side, volume) \
@@ -76,7 +76,7 @@
     JSON_STR("ord_type", ord_type) "," \
     JSON_STR("price", price) "," \
     JSON_STR("side", side) "," \
-    JSON_STR("time_in_force", time_in_force) "," \
+    JSON_STR("time_in_force", time_in_force) \
     JSON_END
 
 #define BEST_ASK_ORDER_TEMPLATE(identifier, market, ord_type, side, time_in_force, volume) \

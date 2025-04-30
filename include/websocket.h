@@ -3,23 +3,21 @@
 
 #include "common.h"
 #include "json_handler.h"
+#include "utils.h"
+#include "sig_handler.h"
 
 #include <libwebsockets.h> // lws
 
-extern atomic_bool g_ws_running;
+#define PING_INTERVAL 30
+#define DATA_REQUEST_INTERVAL 5
+#define MAX_RETRY_ATTEMPTS 5
 
 /* WEBSOCKET */
-void init_websocket();
-void set_socket();
-void connect_websocket();
-void destroy_websocket();
-void *websocket_thread(void *arg);
-void websocket_thread_run();
-
-/* REQUEST */
-void ticker_request(struct lws *wsi);
-void orderbook_request(struct lws *wsi);
-void ticker_orderbook_request(struct lws *wsi);
-void ticker_orderbook_trade_request(struct lws *wsi);
+void init_websocket_all();
+void destroy_websocket_all();
+void init_websocket_public();
+void destroy_websocket_public();
+void init_websocket_private();
+void destroy_websocket_private();
 
 #endif//_WEBSOCKET_H

@@ -8,6 +8,7 @@
 #include "thread_queue.h"
 #include "account_handler.h"
 #include "symbol_handler.h"
+#include "websocket.h"
 
 #include <jansson.h>
 
@@ -21,10 +22,13 @@ void init_json_config();
 void destroy_json_config();
 
 /* WEBSOCKET RESPONSE JSON DATA PARSE */
-void parse_websocket_data(const char *data, size_t len);
+void parse_websocket_public_data(const char *data, size_t len);
+void parse_websocket_private_data(const char *data, size_t len);
 void parse_ticker_json(json_t *root);
 void parse_orderbook_json(json_t *root);
-void parse_trade_json(json_t *root);
+//void parse_trade_json(json_t *root);
+void parse_my_order_json(json_t *root);
+void parse_my_asset_json(json_t *root);
 
 /* REST API RESPONSE JSON DATA PARSE */
 void parse_account_json(const char *data);

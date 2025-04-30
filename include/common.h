@@ -12,14 +12,14 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <locale.h>
 
 #include "rb.h"
 #include "log.h"
 
 /* SWITCH */
 #define UI_ON 0
-#define TEST_ON 1
-#define PRINT 0
+#define PRINT 1
 
 /* UTILITY MACROS */
 #define IS_EMPTY_STR(str) (((str) == NULL) || ((str)[0] == '\0'))
@@ -33,6 +33,7 @@
 #define ORDER "\033[94m[ORDER] \033[0m"
 #define CANCEL "\033[95m[CANCEL] \033[0m"
 
+#if PRINT
 #define pr_err(arg...) \
 	flockfile(stderr); \
 	fprintf(stderr, ERROR arg); \
@@ -68,6 +69,42 @@
 	fprintf(stdout, CANCEL arg); \
 	fputc('\n', stdout); \
 	funlockfile(stdout);
+
+#define pr_track(res, input_type) \
+	flockfile(stdout); \
+	fprintf(stdout, "[TRACK][%s:%d] %p (type: %d)", __FILE__, __LINE__, res, input_type); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+
+#define pr_untrack(res) \
+	flockfile(stdout); \
+	fprintf(stdout, "[UNTRACK][%s:%d] %p", __FILE__, __LINE__, res); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+
+#define pr_malloc(p, size) \
+	flockfile(stdout); \
+	fprintf(stdout, "[%s:%d] malloc: %p (%zu bytes)\n", __FILE__, __LINE__, p, size); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+
+#define pr_free(p) \
+	flockfile(stdout); \
+	fprintf(stdout, "[%s:%d] free: %p\n", __FILE__, __LINE__, p); \
+	fputc('\n', stdout); \
+	funlockfile(stdout);
+#else
+#define pr_err(arg...)
+#define pr_out(arg...)
+#define pr_ok(arg...)
+#define pr_trade(arg...)
+#define pr_order(arg...)
+#define pr_cancel(arg...)
+#define pr_track(res, input_type)
+#define pr_untrack(res)
+#define pr_malloc(p, size)
+#define pr_free(p)
+#endif
 
 /* RESOURCE MANAGEMENT */
 /******************************************************************************
@@ -106,7 +143,7 @@ extern pthread_mutex_t g_resources_mtx;
             pr_err("malloc() failed."); \
             exit(EXIT_FAILURE); \
         } \
-		printf("[TRACK][%s:%d] %p (type: %d)\n", __FILE__, __LINE__, res, input_type); \
+		pr_track(res, input_type); \
         node->resource = res; \
         node->type = input_type; \
 		pthread_mutex_lock(&g_resources_mtx); \
@@ -117,7 +154,7 @@ extern pthread_mutex_t g_resources_mtx;
 
 #define UNTRACK_RESOURCE(res) \
     do { \
-		printf("[UNTRACK][%s:%d] %p\n", __FILE__, __LINE__, res); \
+		pr_untrack(res); \
 		pthread_mutex_lock(&g_resources_mtx); \
         resource_node_t **current = &g_resources; \
         while (*current) { \
@@ -140,14 +177,14 @@ extern pthread_mutex_t g_resources_mtx;
             exit(EXIT_FAILURE); \
         } \
         memset(p, 0, size); \
-		printf("[%s:%d] malloc: %p (%zu bytes)\n", __FILE__, __LINE__, p, size); \
+		pr_malloc(p, size); \
         TRACK_RESOURCE(p, RES_MEM); \
     } while (0)
 
 #define FREE(p) \
     do { \
 		if (p) { \
-			printf("[%s:%d] free: %p\n", __FILE__, __LINE__, p); \
+			pr_free(p); \
 			UNTRACK_RESOURCE(p); \
             free(p); \
             p = NULL; \

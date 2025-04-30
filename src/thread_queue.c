@@ -137,11 +137,15 @@ void *worker_thread(void *arg)
 }
 
 /* RETRY LOGIC */
-void enqueue_retry_task(const char *uuid, int initial_backoff_ms)
+void enqueue_retry_task(char *uuid, int initial_backoff_ms)
 {
     retry_task_t *task;
 	MALLOC(task, sizeof(retry_task_t));
     strncpy(task->uuid, uuid, sizeof(task->uuid));
+
+	// free uuid
+	FREE(uuid);
+
     task->retry_count = 0;
     task->next_retry_time = time(NULL) + (initial_backoff_ms / 1000);
 
