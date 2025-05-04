@@ -23,6 +23,11 @@
 #define QUERY_BUFFER_SIZE 1024
 #define URL_BUFFER_SIZE 2048
 
+/* RETRY */
+#define RETRY 3
+#define RETRY_DELAY_MS 1000
+#define DO_RETRY(res, code) ((res) != CURLE_OK || ((code) >= 500 && (code) <= 599))
+
 /* POST DATA & QUERY STRING MACRO */
 // common field
 #define JSON_START "{"

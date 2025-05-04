@@ -19,7 +19,7 @@ int main(void)
 {
 	set_up();
 
-	test();
+	//test();
 
 #if UI_ON
 	while (!g_shutdown_flag) {
@@ -195,7 +195,7 @@ void test()
 					NULL);
 			enqueue_task(place_order_task, (void *) o);
 		} else if (strcmp(command, "5") == 0) {
-			print_order(g_orders->root);
+			print_order();
 		} else if (strcmp(command, "6") == 0) {
 			order_t *o = make_order("KRW-XRP", "bid", 2400, 2, "limit", "fok",
 					NULL);
@@ -236,7 +236,7 @@ void test()
 		} else if (strcmp(command, "q") == 0) {
 			// check if any orders are left
 			atomic_store(&g_shutdown_flag, true);
-			if (atomic_load(&g_orders_empty)) {
+			if (atomic_load(&g_my_orders->is_empty)) {
 				printf("Quit, no orders\n");
 			} else {
 				cancel_by_bulk("all", NULL, NULL, NULL, 10, NULL);

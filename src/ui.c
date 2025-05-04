@@ -59,6 +59,7 @@ static void ticker_orderbook_ui()
 		attron(COLOR_PAIR(strcmp(g_tickers[i].change, "RISE") == 0 ? RISE_COLOR :
             strcmp(g_tickers[i].change, "FALL") == 0 ? FALL_COLOR : DEFAULT_COLOR));
 
+		mvprintw(4, col_start + 2, "Change: %-*s", 40, "");
         mvprintw(4, col_start + 2, "Change: %'.2f KRW (%'.2f%%) [%s]", g_tickers[i].signed_change_price,
 				g_tickers[i].signed_change_rate * 100, g_tickers[i].change);
 
@@ -92,6 +93,7 @@ static void ticker_orderbook_ui()
 
 		attron(COLOR_PAIR(BID_COLOR));
 
+		mvprintw(9, col_start + 2, "Bid: %-*s", 40, "");
         mvprintw(9, col_start + 2, "Bid: %'.2f KRW (%'.2f %s)",
                  g_orderbooks[i].best_bid_price, g_orderbooks[i].best_bid_size, g_symbols[i]);
 
@@ -99,16 +101,22 @@ static void ticker_orderbook_ui()
 
 		attron(COLOR_PAIR(ASK_COLOR));
 
+		mvprintw(10, col_start + 2, "Ask: %-*s", 40, "");
         mvprintw(10, col_start + 2, "Ask: %'.2f KRW (%'.2f %s)",
                  g_orderbooks[i].best_ask_price, g_orderbooks[i].best_ask_size, g_symbols[i]);
 
 		attroff(COLOR_PAIR(ASK_COLOR));
 
+		mvprintw(11, col_start + 2, "Spread: %-*s", 30, "");
         mvprintw(11, col_start + 2, "Spread: %'.2f KRW", g_orderbooks[i].spread);
+		mvprintw(12, col_start + 2, "Bid/Ask Ratio: %-*s", 20, "");
         mvprintw(12, col_start + 2, "Bid/Ask Ratio: %'.2f", g_orderbooks[i].bid_ask_ratio);
         mvprintw(13, col_start, "--------------------------------------------");
+		mvprintw(14, col_start + 2, "Recent Volume: %-*s", 20, "");
         mvprintw(14, col_start + 2, "Recent Volume: %'.2f %s", g_tickers[i].trade_volume, g_symbols[i]);
+		mvprintw(15, col_start + 2, "24h Volume: %-*s", 20, "");
         mvprintw(15, col_start + 2, "24h Volume: %'.2f %s", g_tickers[i].acc_trade_volume_24h, g_symbols[i]);
+		mvprintw(16, col_start + 2, "24h Trade Amount: %-*s", 20, "");
         mvprintw(16, col_start + 2, "24h Trade Amount: %'.2f KRW", g_tickers[i].acc_trade_price_24h);
         mvprintw(17, col_start, "--------------------------------------------");
         mvprintw(18, col_start + 2, "52W High: %'.2f KRW", g_tickers[i].highest_52_week_price);
@@ -120,14 +128,15 @@ static void ticker_orderbook_ui()
 
 static void balance_ui()
 {
-	mvprintw(23, 2, "Currency: %-10s\t Balance: %'20.2f\t Locked: %'20.2f",
+	mvprintw(23, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
 			g_account[0].currency, g_account[0].balance, g_account[0].locked);
-	mvprintw(24, 2, "Currency: %-10s\t Balance: %'20.2f\t Locked: %'20.2f",
+	mvprintw(24, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
 			g_account[1].currency, g_account[1].balance, g_account[1].locked);
-	mvprintw(25, 2, "Currency: %-10s\t Balance: %'20.2f\t Locked: %'20.2f",
+	mvprintw(25, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
 			g_account[2].currency, g_account[2].balance, g_account[2].locked);
-	mvprintw(26, 2, "Currency: %-10s\t Balance: %'20.2f\t Locked: %'20.2f",
+	mvprintw(26, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
 			g_account[3].currency, g_account[3].balance, g_account[3].locked);
+	mvprintw(27, 2, "NUMBER OF ORDERS: %d", g_my_orders->size); // no mutex
 }
 
 static int menu_ui()
@@ -160,8 +169,9 @@ static int menu_ui()
 			if (get_user_input(menu_cmd, sizeof(menu_cmd))) {
 				switch (menu_cmd[0]) {
 					case 'm':
-						if (atomic_load(&g_orders_full)) {
-							mvprintw(28, 91, "Orders full.");
+						if (atomic_load(&g_my_orders->is_full)) {
+							mvprintw(28, 71, "Orders full.");
+							refresh();
 							napms(1000);
 							input_step = 0;
 						} else {
@@ -170,8 +180,9 @@ static int menu_ui()
 						menu_cmd[0] = '\0';
 						break;
 					case 'c':
-						if (atomic_load(&g_orders_empty)) {
-							mvprintw(28, 91, "No orders.");
+						if (atomic_load(&g_my_orders->is_empty)) {
+							mvprintw(28, 71, "No orders.");
+							refresh();
 							napms(1000);
 							input_step = 0;
 						} else {
@@ -181,10 +192,11 @@ static int menu_ui()
 						break;
 					case 'q':
 						atomic_store(&g_shutdown_flag, true);
-						if (!atomic_load(&g_orders_empty)) {
+						if (!atomic_load(&g_my_orders->is_empty)) {
 							cancel_by_bulk("all", NULL, NULL, NULL, 10, NULL);
 						}
-						mvprintw(29, 2, "QUIT");
+						mvprintw(28, 71, "QUIT");
+						refresh();
 						napms(1000);
 						return 1;
 				}
@@ -352,7 +364,6 @@ static int menu_ui()
 				move(29, 0);
 				clrtoeol();
 				refresh();
-				enqueue_task(get_account_info_task, NULL);
 			}
 			break;
 
@@ -436,7 +447,6 @@ static int menu_ui()
 				move(29, 0);
 				clrtoeol();
 				refresh();
-				enqueue_task(get_account_info_task, NULL);
 			}
             break;
 
@@ -448,13 +458,22 @@ static int menu_ui()
 			if (get_user_input(cancel_num, sizeof(cancel_num))) {
 				if (isdigit(cancel_num[0])) {
 					// send order rest api
+					int cn = cancel_num[0] - '0';
 					char *uuid;
 					MALLOC(uuid, 37);
-					strcpy(uuid, g_order_arr[cancel_num[0] - '0']->uuid);
-					enqueue_task(cancel_order_task, (void *)uuid);
+					get_uuid_from_order_arr(cn, &uuid);
+					if (uuid) {
+						enqueue_task(cancel_order_task, (void *)uuid);
+					} else {
+						FREE(uuid);
+					}
+                    clrtoeol();
                     refresh();
+				} else {
+					mvprintw(29, 26, "Wrong input.");
+					refresh();
                     napms(1000);
-				} 
+				}
 				menu_cmd[0] = '\0';
 				order_cmd[0] = '\0';
 				cancel_num[0] = '\0';
@@ -464,7 +483,6 @@ static int menu_ui()
 				move(29, 0);
                 clrtoeol();
 				refresh();
-				enqueue_task(get_account_info_task, NULL);
             }
             break;
     }
@@ -482,8 +500,8 @@ static void order_ui()
             mvprintw(row, col_start, "|");
         }
 
-		if (g_order_arr != NULL && g_order_arr[i] != NULL) {
-			order_t *o = g_order_arr[i];
+		if (g_my_orders->order_arr != NULL && g_my_orders->order_arr[i] != NULL) {
+			order_t *o = g_my_orders->order_arr[i];
 			mvprintw(31, col_start + 2, "[%d]ORDER", i);
 			mvprintw(32, col_start + 2, "%s", o->market);
 			mvprintw(33, col_start + 2, "Price:");

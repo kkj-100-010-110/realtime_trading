@@ -1,20 +1,77 @@
-[2025/04/30 07:22:27:9645] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
-[2025/04/30 07:22:27:9648] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
-[2025/04/30 07:22:27:9649] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
-[2025/04/30 07:22:27:9651] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
-[2025/04/30 07:22:28:1822] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
-[2025/04/30 07:22:28:4355] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 3.39.140.75
-[2025/04/30 07:22:28:4360] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
-[2025/04/30 07:22:28:4361] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
-[2025/04/30 07:22:28:4361] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
-[2025/04/30 07:22:28:4362] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
-[2025/04/30 07:22:28:7065] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
-[2025/04/30 07:22:28:7141] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 15.164.40.168
-[2025/04/30 07:22:55:0738] N: __lws_lc_untag:  -- [wsi|0|pipe] (0) 27.108s
-[2025/04/30 07:22:55:0763] N: __lws_lc_untag:  -- [vh|1|default||-1] (1) 27.111s
-[2025/04/30 07:22:55:0764] N: __lws_lc_untag:  -- [wsicli|0|WS/h1/default/api.upbit.com] (0) 26.894s
-[2025/04/30 07:22:55:0764] N: __lws_lc_untag:  -- [vh|0|netlink] (0) 27.111s
-[2025/04/30 07:22:55:0766] N: __lws_lc_untag:  -- [wsi|0|pipe] (0) 26.640s
-[2025/04/30 07:22:55:0791] N: __lws_lc_untag:  -- [vh|1|default||-1] (1) 26.642s
-[2025/04/30 07:22:55:0792] N: __lws_lc_untag:  -- [wsicli|0|WS/h1/default/api.upbit.com] (0) 26.372s
-[2025/04/30 07:22:55:0793] N: __lws_lc_untag:  -- [vh|0|netlink] (0) 26.643s
+[2025/05/04 23:38:25:2189] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
+[2025/05/04 23:38:25:2195] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
+[2025/05/04 23:38:25:2196] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
+[2025/05/04 23:38:25:2202] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
+[2025/05/04 23:38:25:4550] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
+[2025/05/04 23:38:25:5943] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 3.38.113.64
+[2025/05/04 23:38:25:5948] N: lws_create_context: LWS: 4.3.99-v4.3.0-439-g3f7c79fd, NET CLI H1 H2 WS SS-JSON-POL ConMon IPv6-absent
+[2025/05/04 23:38:25:5949] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
+[2025/05/04 23:38:25:5949] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
+[2025/05/04 23:38:25:5950] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
+[2025/05/04 23:38:25:8097] N: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/api.upbit.com] (1)
+[2025/05/04 23:38:25:8188] N: [wsicli|0|WS/h1/default/api.upbit.com]: lws_client_connect_3_connect: trying 52.78.27.196
+[2025/05/04 23:38:55:0140] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:39:25:0141] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:39:55:0132] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:40:25:0125] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:40:55:0146] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:41:25:0124] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:41:55:0156] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:42:25:0160] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:42:55:0157] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:43:25:0123] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:43:25:6322] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:43:55:0107] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:44:25:0152] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:44:55:0178] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:45:25:0186] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:45:55:0196] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:46:25:0138] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:46:55:0095] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:47:25:0126] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:47:55:0143] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:48:25:0106] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:48:25:6391] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:48:55:0135] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:49:25:0107] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:49:55:0151] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:50:25:0120] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:50:55:0168] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:51:25:0125] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:51:55:0117] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:52:25:0143] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:52:55:0141] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:53:25:0135] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:53:25:6610] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:53:55:0095] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:54:25:0135] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:54:55:0113] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:55:25:0138] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:55:55:0136] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:56:25:0180] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:56:55:0103] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:57:25:0171] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:57:55:0149] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:58:25:0144] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:58:25:6702] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:58:55:0177] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:59:25:0377] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/04 23:59:55:0093] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:00:25:0193] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:00:55:0122] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:01:25:0128] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:01:55:0179] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:02:25:0140] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:02:55:0141] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:03:25:0161] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:03:25:6792] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:03:55:0149] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:04:25:0132] D: [wsicli|0|WS/h1/default/api.upbit.com]: (hexdump: zero length)
+[2025/05/05 00:04:46:1141] N: __lws_lc_untag:  -- [wsi|0|pipe] (0) 26.348min
+[2025/05/05 00:04:46:1166] N: __lws_lc_untag:  -- [vh|1|default||-1] (1) 26.348min
+[2025/05/05 00:04:46:1167] N: __lws_lc_untag:  -- [wsicli|0|WS/h1/default/api.upbit.com] (0) 26.344min
+[2025/05/05 00:04:46:1167] N: __lws_lc_untag:  -- [vh|0|netlink] (0) 26.348min
+[2025/05/05 00:04:46:1169] N: __lws_lc_untag:  -- [wsi|0|pipe] (0) 26.342min
+[2025/05/05 00:04:46:1195] N: __lws_lc_untag:  -- [vh|1|default||-1] (1) 26.342min
+[2025/05/05 00:04:46:1195] N: __lws_lc_untag:  -- [wsicli|0|WS/h1/default/api.upbit.com] (0) 26.338min
+[2025/05/05 00:04:46:1196] N: __lws_lc_untag:  -- [vh|0|netlink] (0) 26.342min

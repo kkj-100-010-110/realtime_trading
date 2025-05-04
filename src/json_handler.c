@@ -611,7 +611,7 @@ void parse_cancel_by_bulk_response(const char *data)
                 pr_cancel("Successfully canceled order: uuid=%s, market=%s", uuid, market);
 				remove_order(uuid);
 				//test
-				print_order(g_orders->root);
+				//print_order(g_my_orders->orders->root);
             }
         }
     }

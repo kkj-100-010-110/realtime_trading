@@ -8,11 +8,6 @@
 #define CONNECTION_TIMEOUT 2L
 #define TRANSFER_TIMEOUT 5L
 
-/* RETRY */
-#define RETRY 3
-#define RETRY_DELAY_MS 1000
-#define DO_RETRY(res, code) ((res) != CURLE_OK || ((code) >= 500 && (code) <= 599))
-
 typedef struct {
 	CURL *handle;
 	bool in_use;

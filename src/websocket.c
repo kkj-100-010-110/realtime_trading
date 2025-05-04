@@ -131,7 +131,7 @@ static int callback_upbit_private(struct lws *wsi,
 				if (lws_write(wsi, &ping_buf[LWS_PRE], 0, LWS_WRITE_PING) < 0) {
 					pr_out("PING SEND FAILED");
 				} else {
-					pr_out("PING SENT");
+					pr_out("PING");
 					last_ping_time = now;
 				}
 			}

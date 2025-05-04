@@ -40,11 +40,17 @@ typedef struct {
 extern const char *g_closed_states[2];
 extern const char *g_open_states[2];
 
-/* data structure, tree & array */
-extern rb_tree_t *g_orders;
-extern order_t **g_order_arr;
-extern atomic_bool g_orders_full;
-extern atomic_bool g_orders_empty;
+/* data */
+typedef struct {
+	rb_tree_t *orders;
+	order_t **order_arr;
+	size_t size;
+	atomic_bool is_full;
+	atomic_bool is_empty;
+	pthread_mutex_t lock;
+} order_manager_t;
+
+extern order_manager_t *g_my_orders;
 
 /* creating structures to make it one portion of args and send it to thread queue */
 order_t *make_order(const char *market, const char *side, double price, double volume,
@@ -58,13 +64,16 @@ order_status_t *create_order_status(const char *market, size_t states_count,
 
 /* init extern variables */
 void init_order_handler();
+
 void insert_order(const char *uuid, const char *market, double volume, double price,
 		const char *side, const char *ord_type, const char *status);
 void remove_order(const char *uuid);
-/* remove_order for ui */
 void update_order_status(const char *uuid, const char *status);
 void update_order_volume(const char *uuid, double remaining_volume);
 void destroy_order_handler();
+
+void get_uuid_from_order_arr(int idx, char **uuid);
+
 /* print for test */
 void print_order();
 

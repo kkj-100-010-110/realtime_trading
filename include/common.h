@@ -18,8 +18,10 @@
 #include "log.h"
 
 /* SWITCH */
-#define UI_ON 0
-#define PRINT 1
+#define UI_ON 1
+//#define UI_ON 0
+//#define PRINT 1
+#define PRINT 0
 
 /* UTILITY MACROS */
 #define IS_EMPTY_STR(str) (((str) == NULL) || ((str)[0] == '\0'))
