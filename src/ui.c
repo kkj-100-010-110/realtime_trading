@@ -1,5 +1,11 @@
 #include "ui.h"
 
+static int get_user_input(char *buffer, int max_len);
+static void ticker_orderbook_ui();
+static void balance_ui();
+static int menu_ui();
+static void order_ui();
+
 void destroy_ui()
 {
 	endwin();
@@ -20,6 +26,18 @@ void init_ui()
 	init_pair(ASK_COLOR, COLOR_MAGENTA, COLOR_BLACK);
 	init_pair(HIGHLIGHT_COLOR, COLOR_YELLOW, COLOR_BLACK);
 	init_pair(DEFAULT_COLOR, COLOR_WHITE, COLOR_BLACK);
+}
+
+int update_ui()
+{
+	ticker_orderbook_ui();
+	balance_ui();
+	order_ui();
+	if (menu_ui()) {
+		return 1;
+	}
+	refresh();
+	return 0;
 }
 
 static int get_user_input(char *buffer, int max_len)
@@ -52,15 +70,15 @@ static void ticker_orderbook_ui()
 	for (int i = 0; i < SYM_COUNT; i++) {
         int col_start = i * col_width + 2;
 
-        mvprintw(1, col_start + 2, "[%s] Real-time Price and Orderbook", g_tickers[i].code);
-        mvprintw(2, col_start, "---------------------------------------------");
-        mvprintw(3, col_start + 2, "Current Price: %'.2f KRW", g_tickers[i].trade_price);
+        mvprintw(1, col_start, "[%s] Real-time Price and Orderbook", g_tickers[i].code);
+        mvprintw(2, col_start, "----------------------------------------------");
+        mvprintw(3, col_start, "Current Price: %'.2f KRW", g_tickers[i].trade_price);
 
 		attron(COLOR_PAIR(strcmp(g_tickers[i].change, "RISE") == 0 ? RISE_COLOR :
             strcmp(g_tickers[i].change, "FALL") == 0 ? FALL_COLOR : DEFAULT_COLOR));
 
-		mvprintw(4, col_start + 2, "Change: %-*s", 40, "");
-        mvprintw(4, col_start + 2, "Change: %'.2f KRW (%'.2f%%) [%s]", g_tickers[i].signed_change_price,
+		mvprintw(4, col_start, "Change: %-*s", 40, "");
+        mvprintw(4, col_start, "Change: %'.2f KRW (%'.2f%%) [%s]", g_tickers[i].signed_change_price,
 				g_tickers[i].signed_change_rate * 100, g_tickers[i].change);
 
 		attroff(COLOR_PAIR( strcmp(g_tickers[i].change, "RISE") == 0 ? RISE_COLOR :
@@ -72,8 +90,8 @@ static void ticker_orderbook_ui()
 			attron(COLOR_PAIR(RISE_COLOR));
 		}
 
-		mvprintw(5, col_start + 2, "High: %'.2f KRW", g_tickers[i].high_price);
-		
+		mvprintw(5, col_start, "High: %'.2f KRW", g_tickers[i].high_price);
+
 		attroff(COLOR_PAIR(RISE_COLOR) | A_BOLD);
 
 		if (g_tickers[i].low_price <= g_tickers[i].trade_price * 1.01) {
@@ -82,61 +100,60 @@ static void ticker_orderbook_ui()
 			attron(COLOR_PAIR(FALL_COLOR));
 		}
 
-		mvprintw(5, col_start + 30, "Low: %'.2f KRW", g_tickers[i].low_price);
+		mvprintw(5, col_start + 20, "Low: %'.2f KRW", g_tickers[i].low_price);
 
 		attroff(COLOR_PAIR(FALL_COLOR) | A_BOLD);
 
-        mvprintw(6, col_start + 2, "Prev Close: %'.2f KRW | Open: %'.2f KRW",
+        mvprintw(6, col_start, "Prev Close: %'.2f KRW | Open: %'.2f KRW",
                  g_tickers[i].prev_closing_price, g_tickers[i].opening_price);
-        mvprintw(7, col_start, "---------------------------------------------");
-        mvprintw(8, col_start + 2, "Orderbook (Best Bid / Ask)");
+        mvprintw(7, col_start, "----------------------------------------------");
+        mvprintw(8, col_start, "Orderbook (Best Bid / Ask)");
 
 		attron(COLOR_PAIR(BID_COLOR));
 
-		mvprintw(9, col_start + 2, "Bid: %-*s", 40, "");
-        mvprintw(9, col_start + 2, "Bid: %'.2f KRW (%'.2f %s)",
+		mvprintw(9, col_start, "Bid: %-*s", 40, "");
+        mvprintw(9, col_start, "Bid: %'.2f KRW (%'.2f %s)",
                  g_orderbooks[i].best_bid_price, g_orderbooks[i].best_bid_size, g_symbols[i]);
 
 		attroff(COLOR_PAIR(BID_COLOR));
 
 		attron(COLOR_PAIR(ASK_COLOR));
 
-		mvprintw(10, col_start + 2, "Ask: %-*s", 40, "");
-        mvprintw(10, col_start + 2, "Ask: %'.2f KRW (%'.2f %s)",
+		mvprintw(10, col_start, "Ask: %-*s", 40, "");
+        mvprintw(10, col_start, "Ask: %'.2f KRW (%'.2f %s)",
                  g_orderbooks[i].best_ask_price, g_orderbooks[i].best_ask_size, g_symbols[i]);
 
 		attroff(COLOR_PAIR(ASK_COLOR));
 
-		mvprintw(11, col_start + 2, "Spread: %-*s", 30, "");
-        mvprintw(11, col_start + 2, "Spread: %'.2f KRW", g_orderbooks[i].spread);
-		mvprintw(12, col_start + 2, "Bid/Ask Ratio: %-*s", 20, "");
-        mvprintw(12, col_start + 2, "Bid/Ask Ratio: %'.2f", g_orderbooks[i].bid_ask_ratio);
-        mvprintw(13, col_start, "--------------------------------------------");
-		mvprintw(14, col_start + 2, "Recent Volume: %-*s", 20, "");
-        mvprintw(14, col_start + 2, "Recent Volume: %'.2f %s", g_tickers[i].trade_volume, g_symbols[i]);
-		mvprintw(15, col_start + 2, "24h Volume: %-*s", 20, "");
-        mvprintw(15, col_start + 2, "24h Volume: %'.2f %s", g_tickers[i].acc_trade_volume_24h, g_symbols[i]);
-		mvprintw(16, col_start + 2, "24h Trade Amount: %-*s", 20, "");
-        mvprintw(16, col_start + 2, "24h Trade Amount: %'.2f KRW", g_tickers[i].acc_trade_price_24h);
-        mvprintw(17, col_start, "--------------------------------------------");
-        mvprintw(18, col_start + 2, "52W High: %'.2f KRW", g_tickers[i].highest_52_week_price);
-        mvprintw(19, col_start + 2, "52W Low: %'.2f KRW", g_tickers[i].lowest_52_week_price);
-        mvprintw(20, col_start + 2, "Market State: %s", g_tickers[i].market_state);
-        mvprintw(21, col_start, "--------------------------------------------");
+		mvprintw(11, col_start, "Spread: %-*s", 30, "");
+        mvprintw(11, col_start, "Spread: %'.2f KRW", g_orderbooks[i].spread);
+		mvprintw(12, col_start, "Bid/Ask Ratio: %-*s", 20, "");
+        mvprintw(12, col_start, "Bid/Ask Ratio: %'.2f", g_orderbooks[i].bid_ask_ratio);
+        mvprintw(13, col_start, "---------------------------------------------");
+		mvprintw(14, col_start, "Recent Volume: %-*s", 20, "");
+        mvprintw(14, col_start, "Recent Volume: %'.2f %s", g_tickers[i].trade_volume, g_symbols[i]);
+		mvprintw(15, col_start, "24h Volume: %-*s", 20, "");
+        mvprintw(15, col_start, "24h Volume: %'.2f %s", g_tickers[i].acc_trade_volume_24h, g_symbols[i]);
+		mvprintw(16, col_start, "24h Trade Amount: %-*s", 20, "");
+        mvprintw(16, col_start, "24h Trade Amount: %'.2f KRW", g_tickers[i].acc_trade_price_24h);
+        mvprintw(17, col_start, "---------------------------------------------");
+        mvprintw(18, col_start, "52W High: %'.2f KRW", g_tickers[i].highest_52_week_price);
+        mvprintw(19, col_start, "52W Low: %'.2f KRW", g_tickers[i].lowest_52_week_price);
+        mvprintw(20, col_start, "Market State: %s", g_tickers[i].market_state);
+        mvprintw(21, col_start, "---------------------------------------------");
     }
 }
 
 static void balance_ui()
 {
-	mvprintw(23, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
+	mvprintw(23, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
 			g_account[0].currency, g_account[0].balance, g_account[0].locked);
-	mvprintw(24, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
+	mvprintw(24, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
 			g_account[1].currency, g_account[1].balance, g_account[1].locked);
-	mvprintw(25, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
+	mvprintw(25, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
 			g_account[2].currency, g_account[2].balance, g_account[2].locked);
-	mvprintw(26, 2, "Currency: %-10s Balance: %'20.2f Locked: %'20.2f",
+	mvprintw(26, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
 			g_account[3].currency, g_account[3].balance, g_account[3].locked);
-	mvprintw(27, 2, "NUMBER OF ORDERS: %d", g_my_orders->size); // no mutex
 }
 
 static int menu_ui()
@@ -516,16 +533,4 @@ static void order_ui()
 			}
 		}
 	}
-}
-
-int update_ui()
-{
-	ticker_orderbook_ui();
-	balance_ui();
-	order_ui();
-	if (menu_ui()) {
-		return 1;
-	}
-	refresh();
-	return 0;
 }
