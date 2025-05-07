@@ -31,7 +31,6 @@ transaction_t *create_txn(long trade_timestamp, const char *code, const char *si
 						  double price, double avg_price, double volume,
 						  double executed_volume, double executed_funds,
 						  double trade_fee, const char *uuid, const char *trade_uuid);
-void rotate_txn_file();
 void save_transaction(transaction_t *txn);
 void save_txn_task(void *arg);
 

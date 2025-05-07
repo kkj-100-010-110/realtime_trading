@@ -65,8 +65,6 @@ transaction_t *create_txn(long trade_timestamp, const char *code, const char *si
 
 void rotate_txn_file()
 {
-	pthread_mutex_lock(&txn_mutex);
-
     struct stat st;
     if (stat("./transactions/txn_1.csv", &st) == 0 && st.st_size > MAX_FILE_SIZE) {
         fclose(txn_file);
@@ -90,7 +88,6 @@ void rotate_txn_file()
 			exit(EXIT_FAILURE);
 		}
 	}
-	pthread_mutex_unlock(&txn_mutex);
 }
 
 void save_transaction(transaction_t *txn)
