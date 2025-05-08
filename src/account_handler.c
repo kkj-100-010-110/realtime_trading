@@ -53,6 +53,7 @@ void destroy_account()
 void update_account(const char *currency, double balance, double locked)
 {
 	pthread_mutex_lock(&account_mtx);
+
 	int idx;
 	idx = get_index(currency);
 	if (idx == -1) {
@@ -62,7 +63,9 @@ void update_account(const char *currency, double balance, double locked)
 	pthread_mutex_unlock(&account_mtx);
 
 	pthread_mutex_lock(&g_account[idx].lock);
+
 	g_account[idx].balance = balance;
 	g_account[idx].locked = locked;
+
 	pthread_mutex_unlock(&g_account[idx].lock);
 }

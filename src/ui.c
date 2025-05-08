@@ -478,7 +478,7 @@ static int menu_ui()
 					int cn = cancel_num[0] - '0';
 					char *uuid;
 					MALLOC(uuid, 37);
-					get_uuid_from_order_arr(cn, &uuid);
+					get_uuid_from_orders(cn, &uuid);
 					if (uuid) {
 						enqueue_task(cancel_order_task, (void *)uuid);
 					} else {
@@ -517,8 +517,8 @@ static void order_ui()
             mvprintw(row, col_start, "|");
         }
 
-		if (g_my_orders->order_arr != NULL && g_my_orders->order_arr[i] != NULL) {
-			order_t *o = g_my_orders->order_arr[i];
+		if (g_my_orders->orders != NULL && g_my_orders->orders[i] != NULL) {
+			order_t *o = g_my_orders->orders[i];
 			mvprintw(31, col_start + 2, "[%d]ORDER", i);
 			mvprintw(32, col_start + 2, "%s", o->market);
 			mvprintw(33, col_start + 2, "Price:");

@@ -6,7 +6,7 @@
 #define MAX_ORDER_NUM 10
 
 typedef struct {
-	const char *uuid; // this points to its key value in rb_tree
+	char uuid[37];
 	char market[16];
     double volume;
     double price;
@@ -42,8 +42,7 @@ extern const char *g_open_states[2];
 
 /* data */
 typedef struct {
-	rb_tree_t *orders;
-	order_t **order_arr;
+	order_t **orders;
 	size_t size;
 	atomic_bool is_full;
 	atomic_bool is_empty;
@@ -72,7 +71,7 @@ void update_order_status(const char *uuid, const char *status);
 void update_order_volume(const char *uuid, double remaining_volume);
 void destroy_order_handler();
 
-void get_uuid_from_order_arr(int idx, char **uuid);
+void get_uuid_from_orders(int idx, char **uuid);
 
 /* print for test */
 void print_order();

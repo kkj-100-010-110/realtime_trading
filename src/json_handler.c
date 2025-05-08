@@ -350,14 +350,20 @@ void parse_my_asset_json(json_t *root)
         return;
     }
 
-	pr_out("in parse_my_asset_json()");
-
 	size_t index;
     json_t *asset_obj;
+	json_t *balance_json;
+	json_t *locked_json;
+	double balance = 0.0;
+	double locked = 0.0;
     json_array_foreach(assets, index, asset_obj) {
         const char *currency = json_string_value(json_object_get(asset_obj, "currency"));
-        double balance = json_real_value(json_object_get(asset_obj, "balance"));
-        double locked = json_real_value(json_object_get(asset_obj, "locked"));
+		balance_json = json_object_get(asset_obj, "balance");
+		if (json_is_real(balance_json)) balance = json_real_value(balance_json);
+		else balance = (double)json_integer_value(balance_json);
+		locked_json = json_object_get(asset_obj, "locked");
+		if (json_is_real(locked_json)) locked = json_real_value(locked_json);
+		else locked = (double)json_integer_value(locked_json);
 		update_account(currency, balance, locked);
 		pr_out("Currency: %s | Balance: %.2f | Locked: %.2f\n",
 				currency, balance, locked);

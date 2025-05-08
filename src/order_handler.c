@@ -87,23 +87,14 @@ void init_order_handler()
 		exit(EXIT_FAILURE);
 	}
 
-	g_my_orders->order_arr = (order_t **)malloc(sizeof(order_t *) * MAX_ORDER_NUM);
-	if (!g_my_orders->order_arr) {
+	g_my_orders->orders = (order_t **)malloc(sizeof(order_t *) * MAX_ORDER_NUM);
+	if (!g_my_orders->orders) {
 		pr_err("malloc() failed.");
-		free(g_my_orders);
 		exit(EXIT_FAILURE);
 	}
 
 	for (int i = 0; i < MAX_ORDER_NUM; i++) {
-		g_my_orders->order_arr[i] = NULL;
-	}
-
-	g_my_orders->orders = rb_create(comparison_str, free_key, free_data);
-	if (!g_my_orders->orders) {
-		pr_err("rb_create() failed.");
-		free(g_my_orders->order_arr);
-		free(g_my_orders);
-		exit(EXIT_FAILURE);
+		g_my_orders->orders[i] = NULL;
 	}
 
 	g_my_orders->size = 0;
@@ -112,20 +103,30 @@ void init_order_handler()
 	pthread_mutex_init(&g_my_orders->lock, NULL);
 }
 
+static void delete_orders()
+{
+	for (int i = 0; i < MAX_ORDER_NUM; i++) {
+		if (g_my_orders->orders[i] != NULL) {
+			free(g_my_orders->orders[i]);
+			g_my_orders->orders[i] = NULL;
+		}
+	}
+	free(g_my_orders->orders);
+	g_my_orders->orders = NULL;
+}
+
 void destroy_order_handler()
 {
 	pthread_mutex_lock(&order_mtx);
 
-	if (g_my_orders) {
-		free(g_my_orders->order_arr);
-		rb_remove_tree(g_my_orders->orders);
-		pthread_mutex_destroy(&g_my_orders->lock);
+	if (g_my_orders->orders) {
+		delete_orders();
 	}
+	pthread_mutex_destroy(&g_my_orders->lock);
 	free(g_my_orders);
 	g_my_orders = NULL;
 
 	pthread_mutex_unlock(&order_mtx);
-
 	pthread_mutex_destroy(&order_mtx);
 }
 
@@ -141,19 +142,12 @@ void insert_order(const char *uuid, const char *market, double volume, double pr
 		pthread_mutex_unlock(&order_mtx);
 		return;
 	} else {
-		// untrack key & data because they will be removed in rb tree.
-		atomic_store(&g_my_orders->is_empty, false);
-		char *key = strdup(uuid);
-		if (!key) {
-			pthread_mutex_unlock(&g_my_orders->lock);
-			pthread_mutex_unlock(&order_mtx);
-			pr_err("strdup() failed.");
-			MY_LOG_ERR("strdup() failed.");
-			exit(EXIT_FAILURE);
+		if (g_my_orders->size == 0) {
+			atomic_store(&g_my_orders->is_empty, false);
 		}
+
 		order_t *data = (order_t *)malloc(sizeof(order_t));
 		if (!data) {
-			free(key);
 			pthread_mutex_unlock(&g_my_orders->lock);
 			pthread_mutex_unlock(&order_mtx);
 			pr_err("malloc() failed.");
@@ -161,7 +155,7 @@ void insert_order(const char *uuid, const char *market, double volume, double pr
 			exit(EXIT_FAILURE);
 		}
 
-		data->uuid = key;
+		strncpy(data->uuid, uuid, sizeof(data->uuid));
 		strncpy(data->market, market, sizeof(data->market));
 		data->volume = volume;
 		data->price = price;
@@ -171,13 +165,12 @@ void insert_order(const char *uuid, const char *market, double volume, double pr
 
 		int idx;
 		for (idx = 0; idx < MAX_ORDER_NUM; idx++) {
-			if (g_my_orders->order_arr[idx] == NULL) {
+			if (g_my_orders->orders[idx] == NULL) {
 				break;
 			}
 		}
-		g_my_orders->order_arr[idx] = data;
+		g_my_orders->orders[idx] = data;
 		g_my_orders->size++;
-		rb_insert(g_my_orders->orders, (void *)key, (void *)data);
 		if (g_my_orders->size == MAX_ORDER_NUM) {
 			atomic_store(&g_my_orders->is_full, true);
 		}
@@ -200,18 +193,14 @@ void remove_order(const char *uuid)
 		if (g_my_orders->size == MAX_ORDER_NUM) {
 			atomic_store(&g_my_orders->is_full, false);
 		}
-		// order_arr
 		for (int i = 0; i < MAX_ORDER_NUM; i++) {
-			if (g_my_orders->order_arr[i] != NULL &&
-					strcmp(g_my_orders->order_arr[i]->uuid, uuid) == 0) {
-				g_my_orders->order_arr[i] = NULL;
+			if (g_my_orders->orders[i] != NULL &&
+					strcmp(g_my_orders->orders[i]->uuid, uuid) == 0) {
+				free(g_my_orders->orders[i]);
+				g_my_orders->orders[i] = NULL;
 				g_my_orders->size--;
 				break;
 			}
-		}
-		// orders(rb_tree)
-		if (rb_contain(g_my_orders->orders, (void *)uuid)) {
-			rb_remove(g_my_orders->orders, (void *)uuid);
 		}
 		if (g_my_orders->size == 0) {
 			atomic_store(&g_my_orders->is_empty, true);
@@ -221,13 +210,13 @@ void remove_order(const char *uuid)
 	pthread_mutex_unlock(&order_mtx);
 }
 
-void get_uuid_from_order_arr(int idx, char **uuid)
+void get_uuid_from_orders(int idx, char **uuid)
 {
 	pthread_mutex_lock(&order_mtx);
 	pthread_mutex_lock(&g_my_orders->lock);
 
-	if (g_my_orders->order_arr[idx] != NULL) {
-		strcpy(*uuid, g_my_orders->order_arr[idx]->uuid);
+	if (g_my_orders->orders[idx] != NULL) {
+		strcpy(*uuid, g_my_orders->orders[idx]->uuid);
 	} else {
 		*uuid = NULL;
 	}
@@ -239,45 +228,48 @@ void get_uuid_from_order_arr(int idx, char **uuid)
 void update_order_status(const char *uuid, const char *status)
 {
 	pthread_mutex_lock(&order_mtx);
+	pthread_mutex_lock(&g_my_orders->lock);
 
-	rb_node_t *node = rb_find(g_my_orders->orders->root,
-							  g_my_orders->orders->compare, (void *)uuid);
-	if (node) {
-		order_t *o = node->data;
-		strcpy(o->status, status);
+	for (int i = 0; i < MAX_ORDER_NUM; i++) {
+		if (g_my_orders->orders[i] != NULL &&
+				strcmp(g_my_orders->orders[i]->uuid, uuid) == 0) {
+			strcpy(g_my_orders->orders[i]->status, status);
+		}
 	}
 
+	pthread_mutex_unlock(&g_my_orders->lock);
 	pthread_mutex_unlock(&order_mtx);
 }
 
 void update_order_volume(const char *uuid, double remaining_volume)
 {
 	pthread_mutex_lock(&order_mtx);
+	pthread_mutex_lock(&g_my_orders->lock);
 
-	rb_node_t *node = rb_find(g_my_orders->orders->root,
-							  g_my_orders->orders->compare, (void *)uuid);
-	if (node) {
-		order_t *o = node->data;
-		o->volume = remaining_volume;
+	for (int i = 0; i < MAX_ORDER_NUM; i++) {
+		if (strcmp(g_my_orders->orders[i]->uuid, uuid) == 0) {
+			g_my_orders->orders[i]->volume = remaining_volume;
+		}
 	}
 
+	pthread_mutex_unlock(&g_my_orders->lock);
 	pthread_mutex_unlock(&order_mtx);
 }
 
 // for debug, if using this, data race occurs
-static void _print_order(rb_node_t *root)
-{
-	if (!root) return;
-
-	_print_order(root->link[LEFT]);
-	order_t *order = (order_t *)root->data;
-	pr_out("Order: %s, %s, %.2f, %.2f, %s, %s\n",
-			(char *)root->key, order->market, order->volume, order->price,
-			order->side, order->status);
-	_print_order(root->link[RIGHT]);
-}
+//static void _print_order(rb_node_t *root)
+//{
+//	if (!root) return;
+//
+//	_print_order(root->link[LEFT]);
+//	order_t *order = (order_t *)root->data;
+//	pr_out("Order: %s, %s, %.2f, %.2f, %s, %s\n",
+//			(char *)root->key, order->market, order->volume, order->price,
+//			order->side, order->status);
+//	_print_order(root->link[RIGHT]);
+//}
 
 void print_order()
 {
-	_print_order(g_my_orders->orders->root);
+	//_print_order(g_my_orders->orders->root);
 }
