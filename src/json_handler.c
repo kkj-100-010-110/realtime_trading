@@ -204,7 +204,7 @@ void parse_ticker_json(json_t *root)
 	}
 	g_tickers[idx].code = g_codes[idx];
 	g_tickers[idx].trade_price = json_real_value(json_object_get(root, "trade_price"));
-	strcpy(g_tickers[idx].change, json_string_value(json_object_get(root, "change")));
+	SAFE_STRCPY(g_tickers[idx].change, json_string_value(json_object_get(root, "change")));
 	g_tickers[idx].signed_change_price = json_real_value(json_object_get(root, "signed_change_price"));
 	g_tickers[idx].signed_change_rate = json_real_value(json_object_get(root, "signed_change_rate"));
 	g_tickers[idx].high_price = json_real_value(json_object_get(root, "high_price"));
@@ -216,7 +216,7 @@ void parse_ticker_json(json_t *root)
     g_tickers[idx].acc_trade_price_24h = json_real_value(json_object_get(root, "acc_trade_price_24h"));
 	g_tickers[idx].highest_52_week_price = json_real_value(json_object_get(root, "highest_52_week_price"));
 	g_tickers[idx].lowest_52_week_price = json_real_value(json_object_get(root, "lowest_52_week_price"));
-	strcpy(g_tickers[idx].market_state, json_string_value(json_object_get(root, "market_state")));
+	SAFE_STRCPY(g_tickers[idx].market_state, json_string_value(json_object_get(root, "market_state")));
 }
 
 void parse_orderbook_json(json_t *root)
@@ -482,7 +482,7 @@ void parse_cancel_order_response_json(const char *data)
 	//		// retry uuid
 	//		char *retry_uuid;
 	//		MALLOC(retry_uuid, 37);
-	//		strcpy(retry_uuid, uuid);
+	//		SAFE_STRCPY(retry_uuid, uuid);
 
 	//		enqueue_retry_task(retry_uuid, INITIAL_BACKOFF_MS);
 	//	} else if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {

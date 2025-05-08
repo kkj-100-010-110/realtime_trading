@@ -26,6 +26,11 @@
 /* UTILITY MACROS */
 #define IS_EMPTY_STR(str) (((str) == NULL) || ((str)[0] == '\0'))
 #define EMPTY_ARR(arr) ((arr)[0] == '\0')
+#define SAFE_STRCPY(dest, src) \
+	do { \
+		strncpy(dest, src, sizeof(dest) - 1); \
+		dest[sizeof(dest) - 1] = '\0'; \
+	} while (0)
 
 /* PRINT MACRO OPTIONS */
 #define INFO "\033[93m[INFO] \033[0m"

@@ -146,13 +146,13 @@ static void ticker_orderbook_ui()
 
 static void balance_ui()
 {
-	mvprintw(23, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
+	mvprintw(23, 2, "Currency: %-8s Balance: %'20.8f Locked: %'20.8f",
 			g_account[0].currency, g_account[0].balance, g_account[0].locked);
-	mvprintw(24, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
+	mvprintw(24, 2, "Currency: %-8s Balance: %'20.8f Locked: %'20.8f",
 			g_account[1].currency, g_account[1].balance, g_account[1].locked);
-	mvprintw(25, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
+	mvprintw(25, 2, "Currency: %-8s Balance: %'20.8f Locked: %'20.8f",
 			g_account[2].currency, g_account[2].balance, g_account[2].locked);
-	mvprintw(26, 2, "Currency: %-8s Balance: %'15.2f Locked: %'10.2f",
+	mvprintw(26, 2, "Currency: %-8s Balance: %'20.8f Locked: %'20.8f",
 			g_account[3].currency, g_account[3].balance, g_account[3].locked);
 }
 
@@ -250,7 +250,7 @@ static int menu_ui()
 			refresh();
             if (get_user_input(order_cmd, sizeof(order_cmd))) {
 				if (order_cmd[0] == 'a' || order_cmd[0] == 'b') {
-					strcpy(order_cmd, order_cmd[0] == 'a' ? "ask" : "bid");
+					SAFE_STRCPY(order_cmd, order_cmd[0] == 'a' ? "ask" : "bid");
 					input_step = 3;
 				} else {
 					mvprintw(29, 42, "Invalid input. Please enter 'b' or 'a'.");
@@ -271,11 +271,11 @@ static int menu_ui()
 			refresh();
             if (get_user_input(limit_cmd, sizeof(limit_cmd))) {
 				if (limit_cmd[0] == 'l') {
-					strcpy(limit_cmd, "limit");
+					SAFE_STRCPY(limit_cmd, "limit");
 					input_step = 7;
 				}
 				else if (limit_cmd[0] == 'm') {
-					strcpy(limit_cmd, order_cmd[0] == 'a' ? "market" : "price");
+					SAFE_STRCPY(limit_cmd, order_cmd[0] == 'a' ? "market" : "price");
 					input_step = limit_cmd[0] == 'm' ? 4 : 5;
 				} else {
 					mvprintw(29, 64, "Invalid input. Please enter 'l' or 'm'.");

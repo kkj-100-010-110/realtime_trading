@@ -43,12 +43,14 @@ transaction_t *create_txn(long trade_timestamp, const char *code, const char *si
 {
 	transaction_t *txn;
 	MALLOC(txn, sizeof(transaction_t));
+	memset(txn, 0, sizeof(transaction_t));
+
 	txn->trade_timestamp = trade_timestamp;
-	strcpy(txn->code, code);
-	strcpy(txn->side, side);
-	strcpy(txn->ord_type, ord_type);
-	strcpy(txn->maker_taker, is_maker ? "maker" : "taker"); // true: maker order, false: taker order
-	strcpy(txn->state, state);
+	SAFE_STRCPY(txn->code, code);
+	SAFE_STRCPY(txn->side, side);
+	SAFE_STRCPY(txn->ord_type, ord_type);
+	SAFE_STRCPY(txn->maker_taker, is_maker ? "maker" : "taker"); // true: maker order, false: taker order
+	SAFE_STRCPY(txn->state, state);
 	txn->price = price;
 	txn->avg_price = avg_price;
 	txn->volume = volume;
@@ -57,8 +59,8 @@ transaction_t *create_txn(long trade_timestamp, const char *code, const char *si
 	txn->trade_fee = trade_fee;
 	if (strcmp(txn->side, "ASK") == 0) txn->total = executed_funds - trade_fee;
 	else txn->total = executed_funds + trade_fee;
-	strcpy(txn->uuid, uuid);
-	strcpy(txn->trade_uuid, trade_uuid);
+	SAFE_STRCPY(txn->uuid, uuid);
+	SAFE_STRCPY(txn->trade_uuid, trade_uuid);
 
 	return txn;
 }
@@ -120,16 +122,28 @@ void save_txn_task(void *arg)
 
     rotate_txn_file();
 
-	struct tm *tm_info = localtime(&txn->trade_timestamp);
-	char datetime[20];
-	strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", tm_info);
+	char datetime[20] = "0000-00-00 00:00:00";
+	if (txn->trade_timestamp > 0) {
+		time_t seconds = txn->trade_timestamp / 1000;
+		struct tm *tm_info = localtime(&seconds);
+		if (tm_info) {
+			strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", tm_info);
+		}
+	}
 
     fprintf(txn_file,
 			"%ld,%s,%s,%s,%s,%s,%s,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%s,%s\n",
-			txn->trade_timestamp, datetime, txn->code, txn->side, txn->ord_type,
-			txn->maker_taker, txn->state, txn->price, txn->avg_price,
-			txn->volume, txn->executed_volume, txn->executed_funds,
-			txn->trade_fee, txn->total, txn->uuid, txn->trade_uuid);
+			txn->trade_timestamp,
+			IS_EMPTY_STR(datetime) ? "[NULL]" : datetime,
+			IS_EMPTY_STR(txn->code) ? "[NULL]" : txn->code,
+			IS_EMPTY_STR(txn->side) ? "[NULL]" : txn->side,
+			IS_EMPTY_STR(txn->ord_type) ? "[NULL]" : txn->ord_type,
+			IS_EMPTY_STR(txn->maker_taker) ? "[NULL]" : txn->maker_taker,
+			IS_EMPTY_STR(txn->state) ? "[NULL]" : txn->state,
+			txn->price, txn->avg_price, txn->volume, txn->executed_volume,
+			txn->executed_funds, txn->trade_fee, txn->total,
+			IS_EMPTY_STR(txn->uuid) ? "[NULL]" : txn->uuid,
+			IS_EMPTY_STR(txn->trade_uuid) ? "[NULL]" : txn->trade_uuid);
 
     fflush(txn_file); // send the buffer to kernel
     fsync(fileno(txn_file)); // force to store kernel buffer on the disk
