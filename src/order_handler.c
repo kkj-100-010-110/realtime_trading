@@ -16,18 +16,18 @@ order_t *make_order(const char *market, const char *side, double price, double v
 	if (!market || !side) {
 		return NULL;
 	}
-	SAFE_STRCPY(o->market, market);
-	SAFE_STRCPY(o->side, side);
+	SAFE_STRCPY(o->market, market, sizeof(o->market));
+	SAFE_STRCPY(o->side, side, sizeof(o->side));
 	o->price = price;
 	o->volume = volume;
 	if (ord_type) {
-		SAFE_STRCPY(o->ord_type, ord_type);
+		SAFE_STRCPY(o->ord_type, ord_type, sizeof(o->ord_type));
 	}
 	if (time_in_force) {
-		SAFE_STRCPY(o->time_in_force, time_in_force);
+		SAFE_STRCPY(o->time_in_force, time_in_force, sizeof(o->time_in_force));
 	}
 	if (status) {
-		SAFE_STRCPY(o->status, status);
+		SAFE_STRCPY(o->status, status, sizeof(o->status));
 	}
 	return o;
 }
@@ -39,21 +39,25 @@ cancel_option_t *create_cancel_option(const char *side, const char *pairs,
 	cancel_option_t *c;
 	MALLOC(c, sizeof(cancel_option_t));
 
-	if (side != NULL) SAFE_STRCPY(c->side, side);
+	if (side != NULL) SAFE_STRCPY(c->side, side, sizeof(c->side));
 	else *c->side = '\0';
 
-	if (pairs != NULL) SAFE_STRCPY(c->pairs, pairs);
+	if (pairs != NULL) SAFE_STRCPY(c->pairs, pairs, sizeof(c->pairs));
 	else *c->pairs = '\0';
 	
-	if (excluded_pairs != NULL) SAFE_STRCPY(c->excluded_pairs, excluded_pairs);
-	else *c->excluded_pairs = '\0';
+	if (excluded_pairs != NULL)
+		SAFE_STRCPY(c->excluded_pairs, excluded_pairs, sizeof(c->excluded_pairs));
+	else
+		*c->excluded_pairs = '\0';
 	
-	if (quote_currencies != NULL) SAFE_STRCPY(c->quote_currencies, quote_currencies);
-	else *c->quote_currencies = '\0';
+	if (quote_currencies != NULL)
+		SAFE_STRCPY(c->quote_currencies, quote_currencies, sizeof(c->quote_currencies));
+	else
+		*c->quote_currencies = '\0';
 	
 	c->count = count;
 
-	if (order_by != NULL) SAFE_STRCPY(c->order_by, order_by);
+	if (order_by != NULL) SAFE_STRCPY(c->order_by, order_by, sizeof(c->order_by));
 	else *c->order_by = '\0';
 	
 	return c;
@@ -65,10 +69,10 @@ order_status_t *create_order_status(const char *market, size_t states_count,
 	order_status_t *os;
 	MALLOC(os, sizeof(order_status_t));
 
-	if (market) SAFE_STRCPY(os->market, market);
+	if (market) SAFE_STRCPY(os->market, market, sizeof(os->market));
 	else os->market[0] = '\0';
 
-	if (order_by) SAFE_STRCPY(os->order_by, order_by);
+	if (order_by) SAFE_STRCPY(os->order_by, order_by, sizeof(os->order_by));
 
 	os->states_count = states_count;
 	os->start_time = start_time;
@@ -216,7 +220,7 @@ void get_uuid_from_orders(int idx, char **uuid)
 	pthread_mutex_lock(&g_my_orders->lock);
 
 	if (g_my_orders->orders[idx] != NULL) {
-		SAFE_STRCPY(*uuid, g_my_orders->orders[idx]->uuid);
+		SAFE_STRCPY(*uuid, g_my_orders->orders[idx]->uuid, 37);
 	} else {
 		*uuid = NULL;
 	}
@@ -233,7 +237,8 @@ void update_order_status(const char *uuid, const char *status)
 	for (int i = 0; i < MAX_ORDER_NUM; i++) {
 		if (g_my_orders->orders[i] != NULL &&
 				strcmp(g_my_orders->orders[i]->uuid, uuid) == 0) {
-			SAFE_STRCPY(g_my_orders->orders[i]->status, status);
+			SAFE_STRCPY(g_my_orders->orders[i]->status, status, sizeof(g_my_orders->orders[i]->status));
+			break;
 		}
 	}
 
@@ -247,8 +252,10 @@ void update_order_volume(const char *uuid, double remaining_volume)
 	pthread_mutex_lock(&g_my_orders->lock);
 
 	for (int i = 0; i < MAX_ORDER_NUM; i++) {
-		if (strcmp(g_my_orders->orders[i]->uuid, uuid) == 0) {
+		if (g_my_orders->orders[i] != NULL &&
+				strcmp(g_my_orders->orders[i]->uuid, uuid) == 0) {
 			g_my_orders->orders[i]->volume = remaining_volume;
+			break;
 		}
 	}
 

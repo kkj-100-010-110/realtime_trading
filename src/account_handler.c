@@ -29,7 +29,7 @@ void init_account()
 	}
 	memset(g_account, 0, sizeof(g_account));
 	for (int i = 0; i < COUNT; i++) {
-		SAFE_STRCPY(g_account[i].currency, currencies[i]);
+		SAFE_STRCPY(g_account[i].currency, currencies[i], sizeof(g_account[i].currency));
 		if (pthread_mutex_init(&g_account[i].lock, NULL) != 0) {
 			pr_err("pthread_mutex_init() failed.");
 			exit(EXIT_FAILURE);

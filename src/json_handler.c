@@ -204,7 +204,8 @@ void parse_ticker_json(json_t *root)
 	}
 	g_tickers[idx].code = g_codes[idx];
 	g_tickers[idx].trade_price = json_real_value(json_object_get(root, "trade_price"));
-	SAFE_STRCPY(g_tickers[idx].change, json_string_value(json_object_get(root, "change")));
+	SAFE_STRCPY(g_tickers[idx].change,
+			json_string_value(json_object_get(root, "change")), sizeof(g_tickers[idx].change));
 	g_tickers[idx].signed_change_price = json_real_value(json_object_get(root, "signed_change_price"));
 	g_tickers[idx].signed_change_rate = json_real_value(json_object_get(root, "signed_change_rate"));
 	g_tickers[idx].high_price = json_real_value(json_object_get(root, "high_price"));
@@ -216,7 +217,8 @@ void parse_ticker_json(json_t *root)
     g_tickers[idx].acc_trade_price_24h = json_real_value(json_object_get(root, "acc_trade_price_24h"));
 	g_tickers[idx].highest_52_week_price = json_real_value(json_object_get(root, "highest_52_week_price"));
 	g_tickers[idx].lowest_52_week_price = json_real_value(json_object_get(root, "lowest_52_week_price"));
-	SAFE_STRCPY(g_tickers[idx].market_state, json_string_value(json_object_get(root, "market_state")));
+	SAFE_STRCPY(g_tickers[idx].market_state,
+			json_string_value(json_object_get(root, "market_state")), sizeof(g_tickers[idx].market_state));
 }
 
 void parse_orderbook_json(json_t *root)
@@ -261,7 +263,7 @@ void parse_orderbook_json(json_t *root)
 //			0, 5, NULL);
 //}
 
-static void trade_done(json_t *root)
+static void process_trade(json_t *root)
 {
 	transaction_t *txn;
 	long trade_timestamp = json_integer_value(json_object_get(root, "trade_timestamp"));
@@ -272,72 +274,56 @@ static void trade_done(json_t *root)
 	const char *order_type = json_string_value(json_object_get(root, "order_type"));
 	const char *state = json_string_value(json_object_get(root, "state"));
 	bool is_maker = json_boolean_value(json_object_get(root, "is_maker"));
-	double price = json_real_value(json_object_get(root, "price"));
-	double avg_price = json_real_value(json_object_get(root, "avg_price"));
-	double volume = json_real_value(json_object_get(root, "volume"));
-	double executed_volume = json_real_value(json_object_get(root, "executed_volume"));
-	double executed_funds = json_real_value(json_object_get(root, "executed_funds"));
-	double trade_fee = json_real_value(json_object_get(root, "trade_fee"));
-	
+	double price = JSON_DOUBLE(root, "price");
+	double avg_price = JSON_DOUBLE(root, "avg_price");
+	double volume = JSON_DOUBLE(root, "volume");
+	double executed_volume = JSON_DOUBLE(root, "executed_volume");
+	double executed_funds = JSON_DOUBLE(root, "executed_funds");
+	double trade_fee = JSON_DOUBLE(root, "trade_fee");
+
 	txn = create_txn(trade_timestamp, code, ask_bid, order_type, is_maker, state,
 					 price, avg_price, volume, executed_volume, executed_funds,
 					 trade_fee, uuid, trade_uuid);
 
 	enqueue_task(save_txn_task, (void *)txn);
 
-	struct tm *tm_info = localtime(&txn->trade_timestamp);
-	char datetime[20];
-	strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", tm_info);
-	pr_trade("%ld,%s,%s,%s,%s,%s,%s,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%s,%s",
-			txn->trade_timestamp, datetime, txn->code, txn->side, txn->ord_type,
-			txn->maker_taker, txn->state, txn->price, txn->avg_price,
-			txn->volume, txn->executed_volume, txn->executed_funds,
-			txn->trade_fee, txn->total, txn->uuid, txn->trade_uuid);
+	//struct tm *tm_info = localtime(&txn->trade_timestamp);
+	//char datetime[20];
+	//strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", tm_info);
+	//pr_trade("%ld,%s,%s,%s,%s,%s,%s,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%s,%s",
+	//		txn->trade_timestamp, datetime, txn->code, txn->side, txn->ord_type,
+	//		txn->maker_taker, txn->state, txn->price, txn->avg_price,
+	//		txn->volume, txn->executed_volume, txn->executed_funds,
+	//		txn->trade_fee, txn->total, txn->uuid, txn->trade_uuid);
 }
 
 void parse_my_order_json(json_t *root) // dealing with trade, done and cancel
 {
+	// check json data
+	//char *dump = json_dumps(root, JSON_INDENT(2));
+	//MY_LOG_ERR("myOrder JSON data\n%s", dump);
+	
 	const char *state = json_string_value(json_object_get(root, "state"));
-	const char *order_type = json_string_value(json_object_get(root, "order_type"));
-	const char *time_in_force = json_string_value(json_object_get(root, "time_in_force"));
 	const char *uuid = json_string_value(json_object_get(root, "uuid"));
+	double remaining_volume;
 
 	if (strcmp(state, "wait") == 0 || strcmp(state, "watch") == 0) {
 		// parse_place_order_response() do this work.
-	} else if (strcmp(state, "cancel") == 0) {
+		return;
+	}
+	if (strcmp(state, "cancel") == 0 || strcmp(state, "done") == 0) {
 		remove_order(uuid);
-	} else if ((strcmp(order_type, "price") == 0 || strcmp(order_type, "market") == 0)) {
-		remove_order(uuid);
-		trade_done(root);
-	} else if (strcmp(order_type, "limit") == 0) {
-		if (time_in_force) {
-			if (strcmp(time_in_force, "ioc") == 0) { // cancel remains
-				if (strcmp(state, "done") == 0 || strcmp(state, "trade") == 0) {
-					trade_done(root);
-				}
-				remove_order(uuid);
-			} else { // "fok" : fill or kill(all or nothing)
-				if (strcmp(state, "done") == 0) trade_done(root);
-				else remove_order(uuid);
-			}
-		} else if (strcmp(state, "done") == 0) {
+		return;
+	}
+	if (strcmp(state, "trade") == 0) {
+		process_trade(root);
+		remaining_volume = json_real_value(json_object_get(root, "remaining_volume"));
+		if (remaining_volume <= MIN_VOLUME_THRESHOLD) {
 			remove_order(uuid);
-			trade_done(root);
-		} else if (strcmp(state, "trade") == 0) {
-			double remaining_volume = json_real_value(json_object_get(root, "remaining_volume"));
+		} else {
 			update_order_volume(uuid, remaining_volume);
-			trade_done(root);
 		}
-	} else if (strcmp(order_type, "best") == 0) {
-		if (strcmp(time_in_force, "ioc") == 0) { // cancel remains
-			if (strcmp(state, "done") == 0 || strcmp(state, "trade") == 0) {
-				trade_done(root);
-			}
-			remove_order(uuid);
-		} else { // "fok" : fill or kill(all or nothing)
-			if (strcmp(state, "done") == 0) trade_done(root);
-			else remove_order(uuid);
-		}
+		return;
 	}
 }
 
@@ -482,7 +468,7 @@ void parse_cancel_order_response_json(const char *data)
 	//		// retry uuid
 	//		char *retry_uuid;
 	//		MALLOC(retry_uuid, 37);
-	//		SAFE_STRCPY(retry_uuid, uuid);
+	//		SAFE_STRCPY(retry_uuid, uuid, 37);
 
 	//		enqueue_retry_task(retry_uuid, INITIAL_BACKOFF_MS);
 	//	} else if (strcmp(state, "done") == 0 || strcmp(state, "cancel") == 0) {

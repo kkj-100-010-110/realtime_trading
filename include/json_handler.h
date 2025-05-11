@@ -12,6 +12,13 @@
 
 #include <jansson.h>
 
+/* MACRO */
+#define MIN_VOLUME_THRESHOLD 1e-8 // remaining volume check
+#define JSON_DOUBLE(obj, key) \
+	(json_is_real(json_object_get(obj, key)) ? \
+	 json_real_value(json_object_get(obj, key)) : \
+	 (double)json_integer_value(json_object_get(obj, key)))
+
 /* EXTERN VARIABLE */
 extern char *g_ticker_json;
 extern char *g_orderbook_json;

@@ -213,7 +213,7 @@ void test()
 			scanf("%s", &uuid);
 			char *arg;
 			MALLOC(arg, sizeof(char) * 37);
-			SAFE_STRCPY(arg, uuid);
+			SAFE_STRCPY(arg, uuid, 37);
 			enqueue_task(cancel_order_task, (void *)arg);
 		} else if (strcmp(command, "10") == 0) {
 			// cancel all orders
@@ -225,7 +225,7 @@ void test()
 			scanf("%s", &uuid);
 			char *arg;
 			MALLOC(arg, sizeof(char) * 37);
-			SAFE_STRCPY(arg, uuid);
+			SAFE_STRCPY(arg, uuid, 37);
 			enqueue_task(get_order_status_task, (void *)arg);
 		} else if (strcmp(command, "12") == 0) {
 			order_status_t *os = create_order_status(NULL, 2, 0, 0, 1, 100, NULL);

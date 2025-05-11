@@ -46,11 +46,11 @@ transaction_t *create_txn(long trade_timestamp, const char *code, const char *si
 	memset(txn, 0, sizeof(transaction_t));
 
 	txn->trade_timestamp = trade_timestamp;
-	SAFE_STRCPY(txn->code, code);
-	SAFE_STRCPY(txn->side, side);
-	SAFE_STRCPY(txn->ord_type, ord_type);
-	SAFE_STRCPY(txn->maker_taker, is_maker ? "maker" : "taker"); // true: maker order, false: taker order
-	SAFE_STRCPY(txn->state, state);
+	SAFE_STRCPY(txn->code, code, sizeof(txn->code));
+	SAFE_STRCPY(txn->side, side, sizeof(txn->side));
+	SAFE_STRCPY(txn->ord_type, ord_type, sizeof(txn->ord_type));
+	SAFE_STRCPY(txn->maker_taker, is_maker ? "maker" : "taker", sizeof(txn->maker_taker)); // true: maker order, false: taker order
+	SAFE_STRCPY(txn->state, state, sizeof(txn->state));
 	txn->price = price;
 	txn->avg_price = avg_price;
 	txn->volume = volume;
@@ -59,8 +59,8 @@ transaction_t *create_txn(long trade_timestamp, const char *code, const char *si
 	txn->trade_fee = trade_fee;
 	if (strcmp(txn->side, "ASK") == 0) txn->total = executed_funds - trade_fee;
 	else txn->total = executed_funds + trade_fee;
-	SAFE_STRCPY(txn->uuid, uuid);
-	SAFE_STRCPY(txn->trade_uuid, trade_uuid);
+	SAFE_STRCPY(txn->uuid, uuid, sizeof(txn->uuid));
+	SAFE_STRCPY(txn->trade_uuid, trade_uuid, sizeof(txn->trade_uuid));
 
 	return txn;
 }

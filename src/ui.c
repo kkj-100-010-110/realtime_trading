@@ -250,7 +250,7 @@ static int menu_ui()
 			refresh();
             if (get_user_input(order_cmd, sizeof(order_cmd))) {
 				if (order_cmd[0] == 'a' || order_cmd[0] == 'b') {
-					SAFE_STRCPY(order_cmd, order_cmd[0] == 'a' ? "ask" : "bid");
+					SAFE_STRCPY(order_cmd, order_cmd[0] == 'a' ? "ask" : "bid", sizeof(order_cmd));
 					input_step = 3;
 				} else {
 					mvprintw(29, 42, "Invalid input. Please enter 'b' or 'a'.");
@@ -271,11 +271,11 @@ static int menu_ui()
 			refresh();
             if (get_user_input(limit_cmd, sizeof(limit_cmd))) {
 				if (limit_cmd[0] == 'l') {
-					SAFE_STRCPY(limit_cmd, "limit");
+					SAFE_STRCPY(limit_cmd, "limit", sizeof(limit_cmd));
 					input_step = 7;
 				}
 				else if (limit_cmd[0] == 'm') {
-					SAFE_STRCPY(limit_cmd, order_cmd[0] == 'a' ? "market" : "price");
+					SAFE_STRCPY(limit_cmd, order_cmd[0] == 'a' ? "market" : "price", sizeof(limit_cmd));
 					input_step = limit_cmd[0] == 'm' ? 4 : 5;
 				} else {
 					mvprintw(29, 64, "Invalid input. Please enter 'l' or 'm'.");

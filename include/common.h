@@ -26,10 +26,17 @@
 /* UTILITY MACROS */
 #define IS_EMPTY_STR(str) (((str) == NULL) || ((str)[0] == '\0'))
 #define EMPTY_ARR(arr) ((arr)[0] == '\0')
-#define SAFE_STRCPY(dest, src) \
+#define SAFE_STRCPY(dest, src, size) \
 	do { \
-		strncpy(dest, src, sizeof(dest) - 1); \
-		dest[sizeof(dest) - 1] = '\0'; \
+		if ((dest) && (src) && (size) > 0) { \
+			size_t len = strlen(src); \
+			size_t copy_len = (len < (size - 1)) ? len : (size - 1); \
+			memcpy((dest), (src), copy_len); \
+			(dest)[copy_len] = '\0'; \
+		} else { \
+			fprintf(stderr, "[ERR][%s:%d] invalid args(dest=%p, src=%p, size=%zu)\n", \
+					__FILE__, __LINE__, (void*)(dest), (void*)(src), (size_t)(size)); \
+		} \
 	} while (0)
 
 /* PRINT MACRO OPTIONS */
